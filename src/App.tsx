@@ -481,6 +481,10 @@ function App() {
                         <div className="h-3 bg-gray-200 rounded w-2/3 mb-3"></div>
                         <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                       </div>
+                    ))}
+                  </div>
+                ) : (
+                  news.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {news.slice(0, 6).map((article, index) => (
                         <article key={article.id || article.title} className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
