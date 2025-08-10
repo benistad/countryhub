@@ -62,7 +62,7 @@ export function useCountryNews() {
     try {
       console.log('🚀 Déclenchement de la synchronisation RSS...');
       
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-musicrow-rss`;
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-gnews-country`;
       
       const response = await fetch(apiUrl, {
         method: 'POST',

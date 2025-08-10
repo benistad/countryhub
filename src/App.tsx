@@ -5,26 +5,14 @@ import { GoogleNewsRSS } from './components/GoogleNewsRSS';
 import { Top30Page } from './components/Top30Page';
 import { OfficialVideos } from './components/OfficialVideos';
 import { useTop30 } from './hooks/useTop30';
-// import { useCountryNews } from './hooks/useCountryNews'; // Remplacé par GNews API direct
+import { useCountryNews } from './hooks/useCountryNews';
 import { useSupabaseOfficialVideos } from './hooks/useSupabaseOfficialVideos';
 import { Video } from './hooks/useOfficialVideos';
 import { SEOHead } from './components/SEOHead';
 
-// Interface pour les articles de news (compatible avec GNews API)
-interface NewsItem {
-  title: string;
-  link: string;
-  description: string;
-  pubDate: string;
-  source: string;
-  guid: string;
-  imageUrl?: string;
-}
-
 function App() {
   const [activeTab, setActiveTab] = useState('home');
-  const [news, setNews] = useState<NewsItem[]>([]);
-  const [newsLoading, setNewsLoading] = useState(true);
+  const { news, loading: newsLoading } = useCountryNews();
   const { items: top30Items, loading: top30Loading } = useTop30();
   const { getVideosFromSupabase } = useSupabaseOfficialVideos();
   const [showAdmin, setShowAdmin] = useState(true);
@@ -66,56 +54,8 @@ function App() {
     loadOfficialVideos();
   }, [getVideosFromSupabase]);
 
-  // Charger les 6 derniers articles de news depuis GNews API (même source que la page NEWS)
-  useEffect(() => {
-    const loadNewsFromGNews = async () => {
-      try {
-        setNewsLoading(true);
-        console.log('📡 Chargement des articles de news depuis GNews API...');
-        
-        const GNEWS_API_KEY = import.meta.env.VITE_GNEWS_API_KEY || '51b0d3ddea619a88159c2a793a9dca83';
-        const GNEWS_BASE_URL = 'https://gnews.io/api/v4/search';
-        
-        const params = new URLSearchParams({
-          q: 'country music',
-          lang: 'en',
-          country: 'us',
-          max: '6', // Récupérer 6 articles pour la homepage
-          apikey: GNEWS_API_KEY
-        });
-        
-        const response = await fetch(`${GNEWS_BASE_URL}?${params}`);
-        
-        if (!response.ok) {
-          throw new Error(`GNews API HTTP ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data.articles && Array.isArray(data.articles)) {
-          const newsItems: NewsItem[] = data.articles.map((article: any) => ({
-            title: article.title || '',
-            link: article.url || '',
-            description: article.description || '',
-            pubDate: article.publishedAt || new Date().toISOString(),
-            source: article.source?.name || 'GNews',
-            guid: article.url || `gnews-${Math.random()}`,
-            imageUrl: article.image || ''
-          }));
-          
-          console.log(`✅ ${newsItems.length} articles de news chargés depuis GNews`);
-          setNews(newsItems);
-        }
-      } catch (error) {
-        console.error('❌ Erreur lors du chargement des articles de news:', error);
-        setNews([]); // Fallback vers un tableau vide
-      } finally {
-        setNewsLoading(false);
-      }
-    };
-
-    loadNewsFromGNews();
-  }, []);
+  // Les news sont maintenant gérées par le hook useCountryNews qui lit depuis Supabase
+  // La synchronisation avec GNews API se fait via l'Edge Function sync-gnews-country
 
   // Vérifier l'accès admin et initialiser l'onglet basé sur l'URL au chargement initial
   useEffect(() => {
@@ -502,12 +442,12 @@ function App() {
                   news.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {news.slice(0, 6).map((article, index) => (
-                        <article key={article.guid} className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                        <article key={article.id} className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                           {/* Image Section */}
                           <div className="aspect-video bg-gradient-to-br from-blue-100 to-indigo-100 overflow-hidden">
-                            {article.imageUrl ? (
+                            {article.image_url ? (
                               <img 
-                                src={article.imageUrl} 
+                                src={article.image_url} 
                                 alt={article.title}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
@@ -529,8 +469,8 @@ function App() {
                                 <p className="text-gray-600 text-sm line-clamp-2 mb-3">{article.description}</p>
                               )}
                               <div className="flex items-center justify-between text-sm">
-                                <span className="text-blue-600 font-medium">{article.source}</span>
-                                <span className="text-gray-500">{new Date(article.pubDate).toLocaleDateString('fr-FR')}</span>
+                                <span className="text-blue-600 font-medium">Country Music News</span>
+                                <span className="text-gray-500">{new Date(article.pub_date).toLocaleDateString('fr-FR')}</span>
                               </div>
                             </div>
                             <div className="flex items-center justify-between">

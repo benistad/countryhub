@@ -169,7 +169,19 @@ export const GoogleNewsRSS: React.FC<GoogleNewsRSSProps> = ({
   };
 
   useEffect(() => {
+    // Charger immédiatement au montage
     fetchNews();
+    
+    // Actualiser automatiquement toutes les 30 minutes (1800000 ms)
+    const newsRefreshInterval = setInterval(() => {
+      console.log('🔄 Actualisation automatique des news GoogleNewsRSS (30 min)...');
+      fetchNews();
+    }, 30 * 60 * 1000);
+
+    // Nettoyer l'intervalle au démontage
+    return () => {
+      clearInterval(newsRefreshInterval);
+    };
   }, []);
 
   const formatDate = (dateString: string) => {
@@ -343,7 +355,7 @@ export const GoogleNewsRSS: React.FC<GoogleNewsRSSProps> = ({
           </a>
         </p>
         <p className="mt-2">
-          Flux RSS mis à jour automatiquement toutes les 15 minutes
+          Actualités mises à jour automatiquement toutes les 30 minutes
         </p>
       </footer>
     </div>
