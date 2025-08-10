@@ -1,3 +1,29 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Remove unwanted blue outlines and borders */
+* {
+  outline: none !important;
+}
+
+*:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure no blue borders appear on page refresh */
+body, html, #root {
+  border: none !important;
+  outline: none !important;
+}
+
+/* Custom focus styles for accessibility (only when needed) */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #ef4444 !important;
+  outline-offset: 2px !important;
+}

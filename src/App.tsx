@@ -716,7 +716,7 @@ function App() {
         </div>
       </nav>
 
-      <main id="main-content" className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8" role="main" tabIndex={-1}>
+      <main id="main-content" className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8" role="main">
         <div className="px-4 py-6 sm:px-0">
           {renderContent()}
         </div>
