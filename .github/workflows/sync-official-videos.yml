@@ -19,26 +19,60 @@ jobs:
             exit 1
           fi
 
-          echo "Calling $FUNC_URL"
+          echo "=== DEBUG INFO ==="
+          echo "Function URL: $FUNC_URL"
+          echo "Service Role Key: ${SERVICE_ROLE:0:20}..."
+          echo "Current time: $(date)"
+          echo "=================="
 
-          # Make request and capture HTTP code and response
-          http_code=$(curl --silent --show-error --write-out "%{http_code}" --fail \
+          # Test basic connectivity first
+          echo "Testing basic connectivity to Supabase..."
+          curl -I "${FUNC_URL%/functions/v1/*}" --max-time 10 || echo "Warning: Base URL connectivity test failed"
+
+          echo "Calling Edge Function with extended timeout..."
+
+          # Make request with extended timeout and better error handling
+          http_code=$(curl --silent --show-error --write-out "%{http_code}" \
+            --max-time 300 \
+            --connect-timeout 30 \
             -X POST "$FUNC_URL" \
             -H "Authorization: Bearer $SERVICE_ROLE" \
             -H "Content-Type: application/json" \
-            -d '{"trigger":"github_actions","source":"gha","schedule":"daily_04_00_utc"}' \
-            -o response.json) || {
-              echo "Request failed"
+            -H "User-Agent: GitHub-Actions-CountryMusicHub/1.0" \
+            -d '{"trigger":"github_actions","source":"gha","schedule":"daily_04_00_utc","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' \
+            -o response.json 2>error.log) || {
+              echo "=== REQUEST FAILED ==="
+              echo "HTTP Code: $http_code"
+              echo "Error log:"
+              cat error.log || echo "No error log available"
               echo "Response (if any):"
-              cat response.json || true
+              cat response.json || echo "No response file created"
+              
+              # Check if it's a timeout specifically
+              if grep -q "timeout" error.log 2>/dev/null; then
+                echo "This appears to be a timeout issue. The function may be taking too long to execute."
+                echo "Consider optimizing the Edge Function or increasing the timeout."
+              fi
+              
               exit 1
             }
 
-          echo "HTTP $http_code"
+          echo "=== REQUEST COMPLETED ==="
+          echo "HTTP Status: $http_code"
           echo "Response:"
-          cat response.json
+          cat response.json || echo "No response content"
 
-          if [ "$http_code" -ge 400 ]; then
+          if [ "$http_code" -eq 504 ]; then
+            echo "=== 504 GATEWAY TIMEOUT DETECTED ==="
+            echo "This usually means:"
+            echo "1. The Edge Function is taking longer than 30 seconds to execute"
+            echo "2. Supabase infrastructure is experiencing issues"
+            echo "3. The function URL might be incorrect"
+            echo "Please check the Supabase Edge Functions logs for more details."
+            exit 1
+          elif [ "$http_code" -ge 400 ]; then
             echo "Non-success HTTP status: $http_code"
             exit 1
+          else
+            echo "✅ Success! Function executed successfully."
           fi
