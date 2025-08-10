@@ -5,8 +5,7 @@
     <!-- SEO Meta Tags -->
     <title>CountryMusic-Hub.com - Country Music News, Videos & Charts</title>
     <meta name="description" content="Your #1 destination for country music news, official music videos, Billboard charts and trending country hits. Updated daily with the latest from Nashville." />
-    <meta name="keywords" content="country music, actualités country, vidéos country, classement country, musique country, Nashville, Billboard country, clips country" />
-    <meta name="keywords" content="country music, country music news, country music videos, Billboard country charts, Nashville news, country hits, country songs, CMT, country artists" />
+    <meta name="keywords" content="country music, country music news, country music videos, Billboard country charts, Nashville news, country hits, country songs, CMT, country artists, official music videos, country music streaming, country radio, country music charts, country music awards" />
     <meta name="author" content="CountryMusic-Hub.com" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta name="googlebot" content="index, follow" />
@@ -31,11 +30,13 @@
     <link rel="canonical" href="https://countrymusic-hub.com/" />
     
     <!-- Favicon et Icons -->
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/png" href="/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="manifest" href="/manifest.json" />
+    <meta name="msapplication-TileColor" content="#dc2626" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
     
     <!-- Viewport et Performance -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -43,8 +44,12 @@
     
     <!-- Preconnect pour performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://www.youtube.com" />
     <link rel="preconnect" href="https://img.youtube.com" />
+    <link rel="preconnect" href="https://i.ytimg.com" />
+    <link rel="dns-prefetch" href="https://www.googleapis.com" />
+    <link rel="dns-prefetch" href="https://supabase.co" />
     
     <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
@@ -72,9 +77,24 @@
         "https://www.facebook.com/countrymusicHub",
         "https://www.twitter.com/countrymusicHub",
         "https://www.instagram.com/countrymusicHub"
-      ]
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer service",
+        "availableLanguage": ["English", "French"]
+      }
     }
     </script>
+    
+    <!-- Additional SEO Meta Tags -->
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="CountryHub" />
+    
+    <!-- Performance Hints -->
+    <link rel="preload" href="/src/main.tsx" as="script" />
+    <link rel="modulepreload" href="/src/App.tsx" />
   </head>
   <body>
     <div id="root"></div>

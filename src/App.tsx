@@ -9,6 +9,7 @@ import { useCountryNews } from './hooks/useCountryNews';
 import { useSupabaseOfficialVideos } from './hooks/useSupabaseOfficialVideos';
 import { Video } from './hooks/useOfficialVideos';
 import { SEOHead } from './components/SEOHead';
+import { AccessibilityEnhancements, LoadingAnnouncement } from './components/AccessibilityEnhancements';
 
 function App() {
   const [activeTab, setActiveTab] = useState('home');
@@ -19,20 +20,64 @@ function App() {
   const [officialVideos, setOfficialVideos] = useState<Video[]>([]);
   const [officialVideosLoading, setOfficialVideosLoading] = useState(true);
 
-  useEffect(() => {
-    const updatePageTitle = () => {
-      const titles = {
-        home: 'CountryMusic-Hub.com - Actualités, Vidéos et Classements Country',
-        'official-videos': 'Vidéos OFFICIAL - CountryMusic-Hub.com',
-        top30: 'Top 30 Country - CountryMusic-Hub.com',
-        'country-news': 'Actualités Country en Direct - CountryMusic-Hub.com',
-        admin: 'Administration - CountryMusic-Hub.com'
-      };
-      document.title = titles[activeTab as keyof typeof titles] || titles.home;
+  // SEO data for each page
+  const getSEOData = (tab: string) => {
+    const seoData = {
+      home: {
+        title: 'CountryMusic-Hub.com - Country Music News, Videos & Charts',
+        description: 'Your #1 destination for country music news, official music videos, Billboard charts and trending country hits. Updated daily with the latest from Nashville.',
+        canonical: '/',
+        keywords: 'country music, country music news, official music videos, Billboard country charts, Nashville news, country hits',
+        breadcrumbs: [{ name: 'Home', url: '/' }],
+        noindex: false
+      },
+      'official-videos': {
+        title: 'Official Country Music Videos - CountryMusic-Hub.com',
+        description: 'Watch the latest official country music videos from top artists. Updated daily with new releases and trending country hits.',
+        canonical: '/official-videos',
+        keywords: 'official country music videos, country music clips, new country videos, country music streaming',
+        breadcrumbs: [
+          { name: 'Home', url: '/' },
+          { name: 'Official Videos', url: '/official-videos' }
+        ],
+        noindex: false
+      },
+      top30: {
+        title: 'Top 30 Country Music Chart - CountryMusic-Hub.com',
+        description: 'Discover the top 30 country music songs trending now. AI-powered rankings updated weekly with the hottest country hits.',
+        canonical: '/top30',
+        keywords: 'top 30 country, country music chart, country music rankings, trending country songs',
+        breadcrumbs: [
+          { name: 'Home', url: '/' },
+          { name: 'Top 30', url: '/top30' }
+        ],
+        noindex: false
+      },
+      'country-news': {
+        title: 'Country Music News - Latest Updates - CountryMusic-Hub.com',
+        description: 'Stay updated with the latest country music news, artist updates, and industry insights. Fresh content updated hourly.',
+        canonical: '/country-news',
+        keywords: 'country music news, Nashville news, country music industry, country artists news',
+        breadcrumbs: [
+          { name: 'Home', url: '/' },
+          { name: 'News', url: '/country-news' }
+        ],
+        noindex: false
+      },
+      admin: {
+        title: 'Administration - CountryMusic-Hub.com',
+        description: 'Admin panel for managing content and site settings.',
+        canonical: '/admin',
+        keywords: 'admin, administration, management',
+        noindex: true,
+        breadcrumbs: [
+          { name: 'Home', url: '/' },
+          { name: 'Admin', url: '/admin' }
+        ]
+      }
     };
-
-    updatePageTitle();
-  }, [activeTab]);
+    return seoData[tab as keyof typeof seoData] || seoData.home;
+  };
 
   // Charger les 3 dernières vidéos officielles pour la homepage
   useEffect(() => {
@@ -362,7 +407,7 @@ function App() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {top30Items.slice(0, 6).map((item, index) => (
-                      <div key={index} className="bg-white rounded-2xl shadow-md p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                      <div key={item.id || index} className="bg-white rounded-2xl shadow-md p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                         <div className="flex items-center mb-4">
                           <div className="bg-gradient-to-br from-yellow-400 to-orange-500 text-white font-bold text-xl w-12 h-12 rounded-xl flex items-center justify-center mr-4">
                             #{item.rank}
@@ -436,13 +481,9 @@ function App() {
                         <div className="h-3 bg-gray-200 rounded w-2/3 mb-3"></div>
                         <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  news.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {news.slice(0, 6).map((article, index) => (
-                        <article key={article.id} className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                        <article key={article.id || article.title} className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                           {/* Image Section */}
                           <div className="aspect-video bg-gradient-to-br from-blue-100 to-indigo-100 overflow-hidden">
                             {article.image_url ? (
@@ -450,13 +491,11 @@ function App() {
                                 src={article.image_url} 
                                 alt={article.title}
                                 className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                }}
+                                loading="lazy"
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
-                                <Rss className="w-12 h-12 text-blue-500" />
+                                <Rss className="w-12 h-12 text-blue-300" />
                               </div>
                             )}
                           </div>
@@ -464,14 +503,18 @@ function App() {
                           {/* Content Section */}
                           <div className="p-6">
                             <div className="mb-4">
-                              <h4 className="font-semibold text-lg mb-3 text-gray-800 line-clamp-2 leading-tight">{article.title}</h4>
-                              {article.description && (
-                                <p className="text-gray-600 text-sm line-clamp-2 mb-3">{article.description}</p>
-                              )}
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-blue-600 font-medium">Country Music News</span>
-                                <span className="text-gray-500">{new Date(article.pub_date).toLocaleDateString('fr-FR')}</span>
-                              </div>
+                              <h3 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2 leading-tight">
+                                {article.title}
+                              </h3>
+                              <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed">
+                                {article.description || 'Découvrez les dernières actualités du monde de la musique country...'}
+                              </p>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
+                                {index === 0 ? 'Latest' : 'Breaking'}
+                              </span>
+                              <span className="text-gray-500">{new Date(article.pub_date).toLocaleDateString('fr-FR')}</span>
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
@@ -559,8 +602,32 @@ function App() {
     }
   };
 
+  const currentSEO = getSEOData(activeTab);
+  const pageNames = {
+    home: 'Home',
+    'official-videos': 'Official Videos',
+    top30: 'Top 30 Chart',
+    'country-news': 'Country News',
+    admin: 'Administration'
+  };
+  const currentPageName = pageNames[activeTab as keyof typeof pageNames] || 'Home';
+
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-50">
+      <SEOHead 
+        title={currentSEO.title}
+        description={currentSEO.description}
+        canonical={currentSEO.canonical}
+        keywords={currentSEO.keywords || ''}
+        breadcrumbs={currentSEO.breadcrumbs}
+        noindex={currentSEO.noindex || false}
+      />
+      <AccessibilityEnhancements currentPage={currentPageName} />
+      <LoadingAnnouncement 
+        isLoading={newsLoading || top30Loading || officialVideosLoading} 
+        content="page content" 
+      />
+
       <nav className="bg-white shadow-md" role="navigation" aria-label="Navigation principale">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
@@ -645,7 +712,7 @@ function App() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8" role="main">
+      <main id="main-content" className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8" role="main" tabIndex={-1}>
         <div className="px-4 py-6 sm:px-0">
           {renderContent()}
         </div>
