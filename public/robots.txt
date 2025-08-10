@@ -1,0 +1,32 @@
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://countrymusic-hub.com/sitemap.xml
+
+# Crawl optimization for bots
+Crawl-delay: 1
+
+# Important pages to index with priority
+Allow: /videos
+Allow: /chart
+Allow: /news
+
+# Block admin pages
+Disallow: /admin
+Disallow: /*admin*
+
+# Block technical files
+Disallow: /*.json$
+Disallow: /*.js$
+Disallow: /*.css$
+Disallow: /src/
+Disallow: /node_modules/
+
+# Allow images and media
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.png$
+Allow: /*.gif$
+Allow: /*.webp$
+Allow: /*.svg$

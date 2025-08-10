@@ -1,0 +1,40 @@
+{
+  "name": "CountryMusic-Hub.com",
+  "short_name": "CountryHub",
+  "description": "Your #1 destination for country music news, official music videos and Billboard charts",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#dc2626",
+  "orientation": "portrait-primary",
+  "categories": ["music", "entertainment", "news"],
+  "lang": "en-US",
+  "icons": [
+    {
+      "src": "/Canva 8 png.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/Canva 8 png.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshot-narrow.png",
+      "sizes": "640x1136",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ]
+}
