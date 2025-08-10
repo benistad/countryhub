@@ -161,10 +161,6 @@ const isRelevant = title.toLowerCase().includes('official');
   }
 ]
 
-// Data validation and cleaning applied
-// Saved with sync_type (Manual/Automatique)
-```
-
 ## 🚀 Deployment & Automation
 
 ### Netlify Configuration
@@ -173,8 +169,20 @@ const isRelevant = title.toLowerCase().includes('official');
 - **EasyCron** (Paid): Advanced monitoring and reliability
 - **Webhook.site** (Testing): Test webhook endpoints
 - **Zapier/IFTTT** (Integration): Connect with other services
-
 All Edge Functions are accessible via HTTP POST to their webhook URLs.
+
+### GitHub Actions Workflow (External Cron)
+- Configure repository secrets in GitHub:
+  - `SUPABASE_FUNCTION_URL_SYNC_OFFICIAL_VIDEOS`: `https://<your-project-ref>.supabase.co/functions/v1/sync-official-videos`
+  - `SUPABASE_SERVICE_ROLE_KEY`: Supabase Service Role key
+- Workflow file: `.github/workflows/sync-official-videos.yml`
+- Schedule: daily at 04:00 UTC (cron) + manual runs via the Actions tab
+- Request details: `Authorization: Bearer <service_role>` with JSON body `{ "trigger": "github_actions", "source": "gha", "schedule": "daily_04_00_utc" }`
+
+To test now:
+1. Push changes to GitHub.
+2. Open GitHub → Actions → "Sync Official Videos (Daily)" → Run workflow.
+3. Verify logs and data in `official_videos` and `official_videos_sync_metadata` tables on Supabase.
 
 ## 🔐 Security & Environment
 

@@ -1,0 +1,44 @@
+name: Sync Official Videos (Daily)
+
+on:
+  schedule:
+    - cron: '0 4 * * *' # Daily at 04:00 UTC
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Supabase Edge Function
+        env:
+          FUNC_URL: ${{ secrets.SUPABASE_FUNCTION_URL_SYNC_OFFICIAL_VIDEOS }}
+          SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -z "$FUNC_URL" ] || [ -z "$SERVICE_ROLE" ]; then
+            echo "Missing secrets. Please set SUPABASE_FUNCTION_URL_SYNC_OFFICIAL_VIDEOS and SUPABASE_SERVICE_ROLE_KEY in your repository settings (Settings -> Secrets and variables -> Actions)."
+            exit 1
+          fi
+
+          echo "Calling $FUNC_URL"
+
+          # Make request and capture HTTP code and response
+          http_code=$(curl --silent --show-error --write-out "%{http_code}" --fail \
+            -X POST "$FUNC_URL" \
+            -H "Authorization: Bearer $SERVICE_ROLE" \
+            -H "Content-Type: application/json" \
+            -d '{"trigger":"github_actions","source":"gha","schedule":"daily_04_00_utc"}' \
+            -o response.json) || {
+              echo "Request failed"
+              echo "Response (if any):"
+              cat response.json || true
+              exit 1
+            }
+
+          echo "HTTP $http_code"
+          echo "Response:"
+          cat response.json
+
+          if [ "$http_code" -ge 400 ]; then
+            echo "Non-success HTTP status: $http_code"
+            exit 1
+          fi
