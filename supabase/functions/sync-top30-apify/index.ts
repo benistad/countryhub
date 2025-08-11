@@ -107,15 +107,33 @@ Deno.serve(async (req: Request) => {
     const today = new Date().toISOString().split('T')[0];
     
     console.log("🗑️ Suppression de toutes les anciennes données Top30...");
-    const { error: deleteError } = await supabase
+    
+    // Méthode plus robuste : supprimer par chunks si nécessaire
+    const { data: existingData, error: selectError } = await supabase
       .from('top30_country')
-      .delete()
-      .neq('id', 0); // Supprime toutes les entrées
+      .select('id')
+      .limit(1000);
 
-    if (deleteError) {
-      console.warn("⚠️ Erreur lors de la suppression des anciennes données:", deleteError);
+    if (selectError) {
+      console.warn("⚠️ Erreur lors de la vérification des données existantes:", selectError);
+    }
+
+    if (existingData && existingData.length > 0) {
+      console.log(`📊 ${existingData.length} entrées existantes trouvées, suppression en cours...`);
+      
+      const { error: deleteError } = await supabase
+        .from('top30_country')
+        .delete()
+        .gte('id', 0); // Supprime toutes les entrées (plus robuste que neq)
+
+      if (deleteError) {
+        console.error("❌ Erreur lors de la suppression des anciennes données:", deleteError);
+        throw new Error(`Impossible de supprimer les anciennes données: ${deleteError.message}`);
+      } else {
+        console.log("✅ Toutes les anciennes données supprimées avec succès");
+      }
     } else {
-      console.log("✅ Toutes les anciennes données supprimées");
+      console.log("ℹ️ Aucune donnée existante à supprimer");
     }
 
     // ÉTAPE 3: Insérer les nouvelles données
