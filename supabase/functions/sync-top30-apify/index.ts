@@ -66,32 +66,118 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // ÉTAPE 1: Récupérer les données depuis Apify
-    console.log("📥 Récupération des données depuis Apify...");
+    // ÉTAPE 1: Déclencher un nouvel Actor run Apify pour scraper les données fraîches
+    console.log("🚀 Déclenchement d'un nouvel Actor run Apify...");
     
-    const apiUrl = apifyToken 
-      ? `https://api.apify.com/v2/datasets/x3o7mqIkieI0o9Kay/items?format=json&token=${apifyToken}`
-      : 'https://api.apify.com/v2/datasets/x3o7mqIkieI0o9Kay/items?format=json';
-    
-    console.log('🔑 Utilisation du token API:', apifyToken ? 'Oui' : 'Non');
-
-    const response = await fetch(apiUrl);
-    
-    if (!response.ok) {
-      throw new Error(`Erreur HTTP ${response.status}: ${response.statusText}`);
+    if (!apifyToken) {
+      throw new Error('Token Apify requis pour déclencher un actor run');
     }
 
-    const data = await response.json();
+    // Configuration de l'Actor input pour scraper PopVortex
+    const actorInput = {
+      "runMode": "PRODUCTION",
+      "startUrls": [
+        {
+          "url": "https://www.popvortex.com/music/charts/top-country-songs.php"
+        }
+      ],
+      "keepUrlFragments": false,
+      "respectRobotsTxtFile": true,
+      "linkSelector": "a[href]",
+      "globs": [],
+      "pseudoUrls": [],
+      "excludes": [],
+      "pageFunction": `
+        async function pageFunction(context) {
+          const $ = context.jQuery;
+          const items = [];
+          
+          // Scraper le Top 30 depuis PopVortex
+          $('.chart-item, .song-item, tr').each((index, element) => {
+            const $el = $(element);
+            const rank = $el.find('.rank, .position, td:first-child').text().trim();
+            const title = $el.find('.title, .song-title, .track-title, td:nth-child(2)').text().trim();
+            const artist = $el.find('.artist, .artist-name, td:nth-child(3)').text().trim();
+            const appleMusicUrl = $el.find('a[href*="music.apple.com"]').attr('href');
+            
+            if (rank && title && artist) {
+              items.push({
+                rank: parseInt(rank) || index + 1,
+                title: title,
+                artist: artist,
+                appleMusicUrl: appleMusicUrl || undefined
+              });
+            }
+          });
+          
+          return { items: items.slice(0, 30) }; // Limiter à 30 entrées
+        }
+      `,
+      "injectJQuery": true,
+      "proxyConfiguration": {
+        "useApifyProxy": true
+      },
+      "maxPagesPerCrawl": 1,
+      "maxConcurrency": 1,
+      "pageLoadTimeoutSecs": 30
+    };
+
+    // Déclencher l'Actor run
+    const runResponse = await fetch(`https://api.apify.com/v2/acts/moJRLRc85AitArpNN/runs?token=${apifyToken}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(actorInput)
+    });
+
+    if (!runResponse.ok) {
+      throw new Error(`Erreur lors du déclenchement de l'Actor: ${runResponse.status} ${runResponse.statusText}`);
+    }
+
+    const runData = await runResponse.json();
+    const runId = runData.data.id;
+    console.log(`🎯 Actor run démarré: ${runId}`);
+
+    // Attendre que le run se termine (polling)
+    let runStatus = 'RUNNING';
+    let attempts = 0;
+    const maxAttempts = 30; // 5 minutes max
+
+    while (runStatus === 'RUNNING' && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 10000)); // Attendre 10 secondes
+      
+      const statusResponse = await fetch(`https://api.apify.com/v2/acts/moJRLRc85AitArpNN/runs/${runId}?token=${apifyToken}`);
+      const statusData = await statusResponse.json();
+      runStatus = statusData.data.status;
+      attempts++;
+      
+      console.log(`⏳ Status du run: ${runStatus} (tentative ${attempts}/${maxAttempts})`);
+    }
+
+    if (runStatus !== 'SUCCEEDED') {
+      throw new Error(`Actor run échoué ou timeout. Status: ${runStatus}`);
+    }
+
+    // Récupérer les résultats du dataset
+    console.log("📥 Récupération des résultats du scraping...");
+    const resultsResponse = await fetch(`https://api.apify.com/v2/acts/moJRLRc85AitArpNN/runs/${runId}/dataset/items?format=json&token=${apifyToken}`);
+    
+    if (!resultsResponse.ok) {
+      throw new Error(`Erreur lors de la récupération des résultats: ${resultsResponse.status}`);
+    }
+
+    const data = await resultsResponse.json();
     console.log('📊 Données reçues:', data);
 
     // Vérifier la structure des données
     if (!Array.isArray(data) || data.length === 0) {
-      throw new Error('Format de données invalide: tableau vide ou inexistant');
+      throw new Error('Aucune donnée récupérée du scraping');
     }
 
     const firstObject = data[0];
     if (!firstObject || !Array.isArray(firstObject.items)) {
-      throw new Error('Format de données invalide: propriété "items" manquante ou invalide');
+      throw new Error('Format de données invalide: propriété "items" manquante');
     }
 
     const top30Items: Top30Item[] = firstObject.items.map((item: any, index: number) => ({
