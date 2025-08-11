@@ -81,6 +81,8 @@ Deno.serve(async (req: Request) => {
           "url": "https://www.popvortex.com/music/charts/top-country-songs.php"
         }
       ],
+      "waitUntil": ["networkidle2"],
+      "navigationTimeoutSecs": 30,
       "keepUrlFragments": false,
       "respectRobotsTxtFile": true,
       "linkSelector": "a[href]",
@@ -92,25 +94,138 @@ Deno.serve(async (req: Request) => {
           const $ = context.jQuery;
           const items = [];
           
-          // Scraper le Top 30 depuis PopVortex
-          $('.chart-item, .song-item, tr').each((index, element) => {
-            const $el = $(element);
-            const rank = $el.find('.rank, .position, td:first-child').text().trim();
-            const title = $el.find('.title, .song-title, .track-title, td:nth-child(2)').text().trim();
-            const artist = $el.find('.artist, .artist-name, td:nth-child(3)').text().trim();
-            const appleMusicUrl = $el.find('a[href*="music.apple.com"]').attr('href');
-            
-            if (rank && title && artist) {
-              items.push({
-                rank: parseInt(rank) || index + 1,
-                title: title,
-                artist: artist,
-                appleMusicUrl: appleMusicUrl || undefined
-              });
-            }
-          });
+          // Debug: log page title and content
+          context.log.info('Page title: ' + $('title').text());
+          context.log.info('Page content length: ' + $('body').text().length);
           
-          return { items: items.slice(0, 30) }; // Limiter à 30 entrées
+          // Attendre que le contenu se charge
+          await context.page.waitForTimeout(3000);
+          
+          // Chercher spécifiquement les données du Top 30
+          context.log.info('Looking for chart data...');
+          
+          // Essayer plusieurs sélecteurs pour PopVortex
+          const selectors = [
+            'table.chart-table tr',
+            'table tr:has(td)',
+            '.chart-container tr',
+            '.top-songs tr',
+            'table tbody tr',
+            'tr:has(.song-title)',
+            'tr:has(.artist)',
+            'table tr',
+            '.chart-row',
+            '.song-row',
+            '.track-row',
+            'tbody tr',
+            '.chart-item',
+            'tr'
+          ];
+          
+          let foundData = false;
+          
+          for (const selector of selectors) {
+            const elements = $(selector);
+            context.log.info('Trying selector: ' + selector + ', found: ' + elements.length + ' elements');
+            
+            if (elements.length > 1) { // Au moins quelques éléments trouvés
+              elements.each((index, element) => {
+                if (index >= 30) return false; // Limiter à 30
+                
+                const $el = $(element);
+                const text = $el.text().trim();
+                
+                // Essayer d'extraire rank, title, artist de différentes façons
+                const cells = $el.find('td');
+                let rank, title, artist, appleMusicUrl;
+                
+                // Log pour debug
+                context.log.info('Processing element ' + index + ': ' + $el.text().substring(0, 100));
+                
+                if (cells.length >= 2) {
+                  // Structure tableau PopVortex
+                  context.log.info('Found ' + cells.length + ' cells in row ' + index);
+                  
+                  // Essayer différentes configurations de colonnes
+                  if (cells.length >= 3) {
+                    rank = cells.eq(0).text().trim();
+                    title = cells.eq(1).text().trim();
+                    artist = cells.eq(2).text().trim();
+                  } else if (cells.length === 2) {
+                    // Peut-être pas de colonne rank
+                    title = cells.eq(0).text().trim();
+                    artist = cells.eq(1).text().trim();
+                    rank = (index + 1).toString();
+                  }
+                  
+                  appleMusicUrl = $el.find('a[href*="music.apple.com"], a[href*="itunes.apple.com"]').attr('href');
+                  
+                  context.log.info('Extracted: rank=' + rank + ', title=' + title + ', artist=' + artist);
+                } else {
+                  // Essayer d'autres structures
+                  rank = $el.find('.rank, .position, .number').first().text().trim() || (index + 1).toString();
+                  title = $el.find('.title, .song, .track').first().text().trim();
+                  artist = $el.find('.artist, .performer').first().text().trim();
+                  appleMusicUrl = $el.find('a[href*="music.apple.com"], a[href*="itunes.apple.com"]').attr('href');
+                  
+                  // Si pas trouvé, essayer le texte brut
+                  if (!title && text.length > 10) {
+                    const parts = text.split(/[\\n\\t\\r]+/).filter(p => p.trim() && p.length > 2);
+                    context.log.info('Text parts: ' + JSON.stringify(parts.slice(0, 5)));
+                    
+                    if (parts.length >= 2) {
+                      // Essayer de détecter title et artist dans les parties
+                      for (let i = 0; i < parts.length - 1; i++) {
+                        if (!title && parts[i].length > 3 && !parts[i].match(/^\\d+$/)) {
+                          title = parts[i];
+                          if (i + 1 < parts.length && parts[i + 1].length > 2) {
+                            artist = parts[i + 1];
+                          }
+                          break;
+                        }
+                      }
+                    }
+                  }
+                }
+                
+                // Nettoyer les données
+                rank = parseInt(rank) || index + 1;
+                title = title ? title.replace(/[\\n\\t\\r]+/g, ' ').trim() : '';
+                artist = artist ? artist.replace(/[\\n\\t\\r]+/g, ' ').trim() : '';
+                
+                // Filtrer les éléments de navigation/interface
+                const isNavigation = title.includes('search') || title.includes('×') || 
+                                   artist.includes('×') || artist.includes('search') ||
+                                   title.toLowerCase().includes('menu') || 
+                                   artist.toLowerCase().includes('menu') ||
+                                   text.includes('navbar') || text.includes('dropdown');
+                
+                context.log.info('After cleaning: rank=' + rank + ', title="' + title + '", artist="' + artist + '", isNav=' + isNavigation);
+                
+                if (title && artist && title.length > 1 && artist.length > 1 && !isNavigation) {
+                  items.push({
+                    rank: rank,
+                    title: title,
+                    artist: artist,
+                    appleMusicUrl: appleMusicUrl || undefined
+                  });
+                  foundData = true;
+                }
+              });
+              
+              if (foundData) {
+                context.log.info('Successfully extracted ' + items.length + ' items with selector: ' + selector);
+                break; // Arrêter si on a trouvé des données
+              }
+            }
+          }
+          
+          // Si aucune donnée trouvée, logger le contenu de la page pour debug
+          if (items.length === 0) {
+            context.log.info('No data found. Page HTML sample: ' + $('body').html().substring(0, 1000));
+          }
+          
+          return { items: items.slice(0, 30) };
         }
       `,
       "injectJQuery": true,
@@ -161,7 +276,19 @@ Deno.serve(async (req: Request) => {
 
     // Récupérer les résultats du dataset
     console.log("📥 Récupération des résultats du scraping...");
-    const resultsResponse = await fetch(`https://api.apify.com/v2/acts/moJRLRc85AitArpNN/runs/${runId}/dataset/items?format=json&token=${apifyToken}`);
+    
+    // D'abord récupérer les infos du run pour obtenir le defaultDatasetId
+    const runInfoResponse = await fetch(`https://api.apify.com/v2/acts/moJRLRc85AitArpNN/runs/${runId}?token=${apifyToken}`);
+    if (!runInfoResponse.ok) {
+      throw new Error(`Erreur lors de la récupération des infos du run: ${runInfoResponse.status}`);
+    }
+    
+    const runInfo = await runInfoResponse.json();
+    const datasetId = runInfo.data.defaultDatasetId;
+    console.log(`📊 Dataset ID: ${datasetId}`);
+    
+    // Maintenant récupérer les résultats du dataset
+    const resultsResponse = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?format=json&token=${apifyToken}`);
     
     if (!resultsResponse.ok) {
       throw new Error(`Erreur lors de la récupération des résultats: ${resultsResponse.status}`);
@@ -169,6 +296,22 @@ Deno.serve(async (req: Request) => {
 
     const data = await resultsResponse.json();
     console.log('📊 Données reçues:', data);
+
+    // Si aucune donnée, récupérer les logs pour debug
+    if (!data || data.length === 0) {
+      console.log("🔍 Aucune donnée récupérée, récupération des logs pour debug...");
+      
+      try {
+        const logsResponse = await fetch(`https://api.apify.com/v2/acts/moJRLRc85AitArpNN/runs/${runId}/log?token=${apifyToken}`);
+        if (logsResponse.ok) {
+          const logs = await logsResponse.text();
+          console.log("📋 Logs Apify (dernières 2000 chars):");
+          console.log(logs.slice(-2000)); // Derniers 2000 caractères des logs
+        }
+      } catch (logError) {
+        console.log("❌ Impossible de récupérer les logs:", logError);
+      }
+    }
 
     // Vérifier la structure des données
     if (!Array.isArray(data) || data.length === 0) {
@@ -210,7 +353,7 @@ Deno.serve(async (req: Request) => {
       const { error: deleteError } = await supabase
         .from('top30_country')
         .delete()
-        .gte('id', 0); // Supprime toutes les entrées (plus robuste que neq)
+        .not('id', 'is', null); // Supprime toutes les entrées (compatible UUID)
 
       if (deleteError) {
         console.error("❌ Erreur lors de la suppression des anciennes données:", deleteError);
