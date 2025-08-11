@@ -1,0 +1,1284 @@
+import React, { useState, useEffect } from 'react';
+import { Youtube, Trophy, RefreshCw, BarChart3, Music, Video, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { YouTubeChannelsManager } from './YouTubeChannelsManager';
+import { useTop30 } from '../hooks/useTop30';
+import { useOfficialVideos } from '../hooks/useOfficialVideos';
+import { useSupabaseOfficialVideos } from '../hooks/useSupabaseOfficialVideos';
+
+interface SyncHistoryItem {
+  id: string;
+  type: 'top30' | 'news' | 'official-videos';
+  timestamp: string;
+  isManual: boolean;
+  status: 'success' | 'error' | 'partial';
+  itemsFound?: number;
+  itemsProcessed?: number;
+  errors?: string[];
+  details?: string;
+  duration?: number;
+}
+
+const AdminPanel: React.FC = () => {
+  const [activeSection, setActiveSection] = useState<'dashboard' | 'sync-history' | 'youtube-channels'>('dashboard');
+  const [syncing, setSyncing] = useState({ top30: false, officialVideos: false });
+  const [syncHistory, setSyncHistory] = useState<SyncHistoryItem[]>([]);
+  const [syncStats, setSyncStats] = useState({
+    top30: { lastSync: null as string | null, lastType: null as 'manual' | 'auto' | null, itemCount: 0 },
+    news: { lastSync: null as string | null, lastType: null as 'manual' | 'auto' | null, itemCount: 0 },
+    officialVideos: { lastSync: null as string | null, lastType: null as 'manual' | 'auto' | null, itemCount: 0 }
+  });
+  
+  const { syncFromApify, getStats: getTop30Stats, lastUpdate: top30LastUpdate } = useTop30();
+  const { syncOfficialVideos } = useOfficialVideos();
+  const { getVideosFromSupabase, getSyncStats } = useSupabaseOfficialVideos();
+
+  const top30Stats = getTop30Stats();
+
+  // Charger les statistiques et l'historique des synchronisations
+  useEffect(() => {
+    const loadSyncData = async () => {
+      try {
+        const videosData = await getVideosFromSupabase();
+        const officialVideosCount = videosData?.videos.length || 0;
+        
+        const syncStatsData = await getSyncStats();
+        const officialVideosLastSync = syncStatsData.length > 0 ? syncStatsData[0].last_sync_at : null;
+
+        const top30Count = top30Stats.total || 0;
+        
+        setSyncStats({
+          top30: { 
+            lastSync: top30LastUpdate, 
+            lastType: 'manual',
+            itemCount: top30Count 
+          },
+          news: { 
+            lastSync: null,
+            lastType: null, 
+            itemCount: 0 
+          },
+          officialVideos: { 
+            lastSync: officialVideosLastSync, 
+            lastType: 'auto',
+            itemCount: officialVideosCount 
+          }
+        });
+
+        const mockHistory: SyncHistoryItem[] = [
+          {
+            id: '1',
+            type: 'top30' as const,
+            timestamp: top30LastUpdate || new Date().toISOString(),
+            isManual: true,
+            status: 'success' as const,
+            itemsFound: top30Count,
+            itemsProcessed: top30Count,
+            duration: 5.2
+          },
+          {
+            id: '2',
+            type: 'official-videos' as const,
+            timestamp: officialVideosLastSync || new Date().toISOString(),
+            isManual: false,
+            status: 'success' as const,
+            itemsFound: officialVideosCount,
+            itemsProcessed: officialVideosCount,
+            duration: 12.8
+          }
+        ].filter(item => item.timestamp);
+        
+        setSyncHistory(mockHistory);
+      } catch (error) {
+        console.error('Erreur lors du chargement des données de sync:', error);
+      }
+    };
+
+    loadSyncData();
+  }, [activeSection, getVideosFromSupabase, getSyncStats, top30Stats, top30LastUpdate]);
+
+  const formatLastUpdate = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - date.getTime());
+      const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffHours < 1) {
+        return 'Il y a moins d\'1h';
+      } else if (diffHours < 24) {
+        return `Il y a ${diffHours}h`;
+      } else if (diffDays === 1) {
+        return 'Hier';
+      } else if (diffDays < 7) {
+        return `Il y a ${diffDays} jours`;
+      } else {
+        return date.toLocaleDateString('fr-FR', { 
+          day: 'numeric',
+          month: 'short',
+          year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+        });
+      }
+    } catch {
+      return 'Date invalide';
+    }
+  };
+
+  const addSyncHistoryItem = (item: Omit<SyncHistoryItem, 'id'>) => {
+    const newItem: SyncHistoryItem = {
+      ...item,
+      id: Date.now().toString()
+    };
+    setSyncHistory(prev => [newItem, ...prev].slice(0, 50));
+  };
+
+  const handleTop30Sync = async () => {
+    setSyncing(prev => ({ ...prev, top30: true }));
+    const startTime = Date.now();
+    
+    try {
+      const result = await syncFromApify();
+      const duration = (Date.now() - startTime) / 1000;
+      
+      if (result.success) {
+        addSyncHistoryItem({
+          type: 'top30',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'success',
+          itemsFound: top30Stats.total,
+          itemsProcessed: top30Stats.total,
+          details: result.message,
+          duration
+        });
+        
+        setSyncStats(prev => ({
+          ...prev,
+          top30: {
+            lastSync: new Date().toISOString(),
+            lastType: 'manual',
+            itemCount: top30Stats.total
+          }
+        }));
+      } else {
+        addSyncHistoryItem({
+          type: 'top30',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'error',
+          errors: [result.message],
+          duration
+        });
+      }
+    } catch (error: any) {
+      const duration = (Date.now() - startTime) / 1000;
+      addSyncHistoryItem({
+        type: 'top30',
+        timestamp: new Date().toISOString(),
+        isManual: true,
+        status: 'error',
+        errors: [error.message || 'Erreur inconnue'],
+        duration
+      });
+    } finally {
+      setSyncing(prev => ({ ...prev, top30: false }));
+    }
+  };
+
+  const handleOfficialVideosSync = async () => {
+    setSyncing(prev => ({ ...prev, officialVideos: true }));
+    const startTime = Date.now();
+    
+    try {
+      const result = await syncOfficialVideos();
+      const duration = (Date.now() - startTime) / 1000;
+      
+      if (result.success) {
+        const videosData = await getVideosFromSupabase();
+        const total = videosData?.videos.length || 0;
+        
+        addSyncHistoryItem({
+          type: 'official-videos',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'success',
+          itemsFound: total,
+          itemsProcessed: total,
+          details: result.message,
+          duration
+        });
+        
+        setSyncStats(prev => ({
+          ...prev,
+          officialVideos: {
+            lastSync: new Date().toISOString(),
+            lastType: 'manual',
+            itemCount: total
+          }
+        }));
+      } else {
+        addSyncHistoryItem({
+          type: 'official-videos',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'error',
+          errors: [result.message],
+          duration
+        });
+      }
+    } catch (error: any) {
+      const duration = (Date.now() - startTime) / 1000;
+      addSyncHistoryItem({
+        type: 'official-videos',
+        timestamp: new Date().toISOString(),
+        isManual: true,
+        status: 'error',
+        errors: [error.message || 'Erreur inconnue'],
+        duration
+      });
+    } finally {
+      setSyncing(prev => ({ ...prev, officialVideos: false }));
+    }
+  };
+
+  // Charger les statistiques et l'historique des synchronisations
+  useEffect(() => {
+    const loadSyncData = async () => {
+      try {
+        // Charger les stats des vidéos officielles
+        const videosData = await getVideosFromSupabase();
+        const officialVideosCount = videosData?.videos.length || 0;
+        
+        const syncStatsData = await getSyncStats();
+        const officialVideosLastSync = syncStatsData.length > 0 ? syncStatsData[0].last_sync_at : null;
+
+        // Charger les stats du Top30
+        const top30Count = top30Stats.total || 0;
+        
+        // Mettre à jour les stats
+        setSyncStats({
+          top30: { 
+            lastSync: top30LastUpdate, 
+            lastType: 'manual', // TODO: détecter auto vs manuel
+            itemCount: top30Count 
+          },
+          news: { 
+            lastSync: null, // TODO: implémenter
+            lastType: null, 
+            itemCount: 0 
+          },
+          officialVideos: { 
+            lastSync: officialVideosLastSync, 
+            lastType: 'auto', // TODO: détecter auto vs manuel
+            itemCount: officialVideosCount 
+          }
+        });
+
+        // Simuler un historique de synchronisation (à remplacer par de vraies données)
+        const mockHistory: SyncHistoryItem[] = [
+          {
+            id: '1',
+            type: 'top30' as const,
+            timestamp: top30LastUpdate || new Date().toISOString(),
+            isManual: true,
+            status: 'success' as const,
+            itemsFound: top30Count,
+            itemsProcessed: top30Count,
+            duration: 5.2
+          },
+          {
+            id: '2',
+            type: 'official-videos' as const,
+            timestamp: officialVideosLastSync || new Date().toISOString(),
+            isManual: false,
+            status: 'success' as const,
+            itemsFound: officialVideosCount,
+            itemsProcessed: officialVideosCount,
+            duration: 12.8
+          }
+        ].filter(item => item.timestamp);
+        
+        setSyncHistory(mockHistory);
+      } catch (error) {
+        console.error('Erreur lors du chargement des données de sync:', error);
+      }
+    };
+
+    loadSyncData();
+  }, [activeSection, getVideosFromSupabase, getSyncStats, top30Stats, top30LastUpdate]);
+
+  /**
+   * Formate la date de dernière mise à jour
+   */
+  const formatLastUpdate = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - date.getTime());
+      const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffHours < 1) {
+        return 'Il y a moins d\'1h';
+      } else if (diffHours < 24) {
+        return `Il y a ${diffHours}h`;
+      } else if (diffDays === 1) {
+        return 'Hier';
+      } else if (diffDays < 7) {
+        return `Il y a ${diffDays} jours`;
+      } else {
+        return date.toLocaleDateString('fr-FR', { 
+          day: 'numeric',
+          month: 'short',
+          year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+        });
+      }
+    } catch {
+      return 'Date invalide';
+    }
+  };
+
+  /**
+   * Ajouter une entrée à l'historique de synchronisation
+   */
+  const addSyncHistoryItem = (item: Omit<SyncHistoryItem, 'id'>) => {
+    const newItem: SyncHistoryItem = {
+      ...item,
+      id: Date.now().toString()
+    };
+    setSyncHistory(prev => [newItem, ...prev].slice(0, 50)); // Garder les 50 dernières
+  };
+
+  /**
+   * Synchronisation du Top30
+   */
+  const handleTop30Sync = async () => {
+    setSyncing(prev => ({ ...prev, top30: true }));
+    const startTime = Date.now();
+    
+    try {
+      const result = await syncFromApify();
+      const duration = (Date.now() - startTime) / 1000;
+      
+      if (result.success) {
+        // Ajouter à l'historique
+        addSyncHistoryItem({
+          type: 'top30',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'success',
+          itemsFound: top30Stats.total,
+          itemsProcessed: top30Stats.total,
+          details: result.message,
+          duration
+        });
+        
+        // Mettre à jour les stats
+        setSyncStats(prev => ({
+          ...prev,
+          top30: {
+            lastSync: new Date().toISOString(),
+            lastType: 'manual',
+            itemCount: top30Stats.total
+          }
+        }));
+      } else {
+        addSyncHistoryItem({
+          type: 'top30',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'error',
+          errors: [result.message],
+          duration
+        });
+      }
+    } catch (error: any) {
+      const duration = (Date.now() - startTime) / 1000;
+      addSyncHistoryItem({
+        type: 'top30',
+        timestamp: new Date().toISOString(),
+        isManual: true,
+        status: 'error',
+        errors: [error.message || 'Erreur inconnue'],
+        duration
+      });
+    } finally {
+      setSyncing(prev => ({ ...prev, top30: false }));
+    }
+  };
+
+  const handleOfficialVideosSync = async () => {
+    setSyncing(prev => ({ ...prev, officialVideos: true }));
+    const startTime = Date.now();
+    
+    try {
+      const result = await syncOfficialVideos();
+      const duration = (Date.now() - startTime) / 1000;
+      
+      if (result.success) {
+        // Recharger les stats
+        const videosData = await getVideosFromSupabase();
+        const total = videosData?.videos.length || 0;
+        
+        // Ajouter à l'historique
+        addSyncHistoryItem({
+          type: 'official-videos',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'success',
+          itemsFound: total,
+          itemsProcessed: total,
+          details: result.message,
+          duration
+        });
+        
+        // Mettre à jour les stats
+        setSyncStats(prev => ({
+          ...prev,
+          officialVideos: {
+            lastSync: new Date().toISOString(),
+            lastType: 'manual',
+            itemCount: total
+          }
+        }));
+      } else {
+        addSyncHistoryItem({
+          type: 'official-videos',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'error',
+          errors: [result.message],
+          duration
+        });
+      }
+    } catch (error: any) {
+      const duration = (Date.now() - startTime) / 1000;
+      addSyncHistoryItem({
+        type: 'official-videos',
+        timestamp: new Date().toISOString(),
+        isManual: true,
+        status: 'error',
+        errors: [error.message || 'Erreur inconnue'],
+        duration
+      });
+    } finally {
+      setSyncing(prev => ({ ...prev, officialVideos: false }));
+    }
+  };
+
+  // Charger les statistiques et l'historique des synchronisations
+  useEffect(() => {
+    const loadSyncData = async () => {
+      try {
+        // Charger les stats des vidéos officielles
+        const videosData = await getVideosFromSupabase();
+        const officialVideosCount = videosData?.videos.length || 0;
+        
+        const syncStatsData = await getSyncStats();
+        const officialVideosLastSync = syncStatsData.length > 0 ? syncStatsData[0].last_sync_at : null;
+
+        // Charger les stats du Top30
+        const top30Count = top30Stats.total || 0;
+        
+        // Mettre à jour les stats
+        setSyncStats({
+          top30: { 
+            lastSync: top30LastUpdate, 
+            lastType: 'manual', // TODO: détecter auto vs manuel
+            itemCount: top30Count 
+          },
+          news: { 
+            lastSync: null, // TODO: implémenter
+            lastType: null, 
+            itemCount: 0 
+          },
+          officialVideos: { 
+            lastSync: officialVideosLastSync, 
+            lastType: 'auto', // TODO: détecter auto vs manuel
+            itemCount: officialVideosCount 
+          }
+        });
+
+        // Simuler un historique de synchronisation (à remplacer par de vraies données)
+        const mockHistory: SyncHistoryItem[] = [
+          {
+            id: '1',
+            type: 'top30' as const,
+            timestamp: top30LastUpdate || new Date().toISOString(),
+            isManual: true,
+            status: 'success' as const,
+            itemsFound: top30Count,
+            itemsProcessed: top30Count,
+            duration: 5.2
+          },
+          {
+            id: '2',
+            type: 'official-videos' as const,
+            timestamp: officialVideosLastSync || new Date().toISOString(),
+            isManual: false,
+            status: 'success' as const,
+            itemsFound: officialVideosCount,
+            itemsProcessed: officialVideosCount,
+            duration: 12.8
+          }
+        ].filter(item => item.timestamp);
+        
+        setSyncHistory(mockHistory);
+      } catch (error) {
+        console.error('Erreur lors du chargement des données de sync:', error);
+      }
+    };
+
+    loadSyncData();
+  }, [activeSection, getVideosFromSupabase, getSyncStats, top30Stats, top30LastUpdate]);
+
+  /**
+   * Formate la date de dernière mise à jour
+   */
+  const formatLastUpdate = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - date.getTime());
+      const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffHours < 1) {
+        return 'Il y a moins d\'1h';
+      } else if (diffHours < 24) {
+        return `Il y a ${diffHours}h`;
+      } else if (diffDays === 1) {
+        return 'Hier';
+      } else if (diffDays < 7) {
+        return `Il y a ${diffDays} jours`;
+      } else {
+        return date.toLocaleDateString('fr-FR', { 
+          day: 'numeric',
+          month: 'short',
+          year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+        });
+      }
+    } catch {
+      return 'Date invalide';
+    }
+  };
+
+  /**
+   * Ajouter une entrée à l'historique de synchronisation
+   */
+  const addSyncHistoryItem = (item: Omit<SyncHistoryItem, 'id'>) => {
+    const newItem: SyncHistoryItem = {
+      ...item,
+      id: Date.now().toString()
+    };
+    setSyncHistory(prev => [newItem, ...prev].slice(0, 50)); // Garder les 50 dernières
+  };
+
+  /**
+   * Synchronisation du Top30
+   */
+  const handleTop30Sync = async () => {
+    setSyncing(prev => ({ ...prev, top30: true }));
+    const startTime = Date.now();
+    
+    try {
+      const result = await syncFromApify();
+      const duration = (Date.now() - startTime) / 1000;
+      
+      if (result.success) {
+        // Ajouter à l'historique
+        addSyncHistoryItem({
+          type: 'top30',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'success',
+          itemsFound: top30Stats.total,
+          itemsProcessed: top30Stats.total,
+          details: result.message,
+          duration
+        });
+        
+        // Mettre à jour les stats
+        setSyncStats(prev => ({
+          ...prev,
+          top30: {
+            lastSync: new Date().toISOString(),
+            lastType: 'manual',
+            itemCount: top30Stats.total
+          }
+        }));
+      } else {
+        addSyncHistoryItem({
+          type: 'top30',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'error',
+          errors: [result.message],
+          duration
+        });
+      }
+    } catch (error: any) {
+      const duration = (Date.now() - startTime) / 1000;
+      addSyncHistoryItem({
+        type: 'top30',
+        timestamp: new Date().toISOString(),
+        isManual: true,
+        status: 'error',
+        errors: [error.message || 'Erreur inconnue'],
+        duration
+      });
+    } finally {
+      setSyncing(prev => ({ ...prev, top30: false }));
+    }
+  };
+
+  const handleOfficialVideosSync = async () => {
+    setSyncing(prev => ({ ...prev, officialVideos: true }));
+    const startTime = Date.now();
+    
+    try {
+      const result = await syncOfficialVideos();
+      const duration = (Date.now() - startTime) / 1000;
+      
+      if (result.success) {
+        // Recharger les stats
+        const videosData = await getVideosFromSupabase();
+        const total = videosData?.videos.length || 0;
+        
+        // Ajouter à l'historique
+        addSyncHistoryItem({
+          type: 'official-videos',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'success',
+          itemsFound: total,
+          itemsProcessed: total,
+          details: result.message,
+          duration
+        });
+        
+        // Mettre à jour les stats
+        setSyncStats(prev => ({
+          ...prev,
+          officialVideos: {
+            lastSync: new Date().toISOString(),
+            lastType: 'manual',
+            itemCount: total
+          }
+        }));
+      } else {
+        addSyncHistoryItem({
+          type: 'official-videos',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'error',
+          errors: [result.message],
+          duration
+        });
+      }
+    } catch (error: any) {
+      const duration = (Date.now() - startTime) / 1000;
+      addSyncHistoryItem({
+        type: 'official-videos',
+        timestamp: new Date().toISOString(),
+        isManual: true,
+        status: 'error',
+        errors: [error.message || 'Erreur inconnue'],
+        duration
+      });
+    } finally {
+      setSyncing(prev => ({ ...prev, officialVideos: false }));
+    }
+  };
+
+  // Charger les statistiques et l'historique des synchronisations
+  useEffect(() => {
+    const loadSyncData = async () => {
+      try {
+        // Charger les stats des vidéos officielles
+        const videosData = await getVideosFromSupabase();
+        const officialVideosCount = videosData?.videos.length || 0;
+        
+        const syncStatsData = await getSyncStats();
+        const officialVideosLastSync = syncStatsData.length > 0 ? syncStatsData[0].last_sync_at : null;
+
+        // Charger les stats du Top30
+        const top30Count = top30Stats.total || 0;
+        
+        // Mettre à jour les stats
+        setSyncStats({
+          top30: { 
+            lastSync: top30LastUpdate, 
+            lastType: 'manual', // TODO: détecter auto vs manuel
+            itemCount: top30Count 
+          },
+          news: { 
+            lastSync: null, // TODO: implémenter
+            lastType: null, 
+            itemCount: 0 
+          },
+          officialVideos: { 
+            lastSync: officialVideosLastSync, 
+            lastType: 'auto', // TODO: détecter auto vs manuel
+            itemCount: officialVideosCount 
+          }
+        });
+
+        // Simuler un historique de synchronisation (à remplacer par de vraies données)
+        const mockHistory: SyncHistoryItem[] = [
+          {
+            id: '1',
+            type: 'top30' as const,
+            timestamp: top30LastUpdate || new Date().toISOString(),
+            isManual: true,
+            status: 'success' as const,
+            itemsFound: top30Count,
+            itemsProcessed: top30Count,
+            duration: 5.2
+          },
+          {
+            id: '2',
+            type: 'official-videos' as const,
+            timestamp: officialVideosLastSync || new Date().toISOString(),
+            isManual: false,
+            status: 'success' as const,
+            itemsFound: officialVideosCount,
+            itemsProcessed: officialVideosCount,
+            duration: 12.8
+          }
+        ].filter(item => item.timestamp);
+        
+        setSyncHistory(mockHistory);
+      } catch (error) {
+        console.error('Erreur lors du chargement des données de sync:', error);
+      }
+    };
+
+    loadSyncData();
+  }, [activeSection, getVideosFromSupabase, getSyncStats, top30Stats, top30LastUpdate]);
+
+  /**
+   * Formate la date de dernière mise à jour
+   */
+  const formatLastUpdate = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - date.getTime());
+      const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffHours < 1) {
+        return 'Il y a moins d\'1h';
+      } else if (diffHours < 24) {
+        return `Il y a ${diffHours}h`;
+      } else if (diffDays === 1) {
+        return 'Hier';
+      } else if (diffDays < 7) {
+        return `Il y a ${diffDays} jours`;
+      } else {
+        return date.toLocaleDateString('fr-FR', { 
+          day: 'numeric',
+          month: 'short',
+          year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+        });
+      }
+    } catch {
+      return 'Date invalide';
+    }
+  };
+
+  /**
+   * Ajouter une entrée à l'historique de synchronisation
+   */
+  const addSyncHistoryItem = (item: Omit<SyncHistoryItem, 'id'>) => {
+    const newItem: SyncHistoryItem = {
+      ...item,
+      id: Date.now().toString()
+    };
+    setSyncHistory(prev => [newItem, ...prev].slice(0, 50)); // Garder les 50 dernières
+  };
+
+  /**
+   * Synchronisation du Top30
+   */
+  const handleTop30Sync = async () => {
+    setSyncing(prev => ({ ...prev, top30: true }));
+    const startTime = Date.now();
+    
+    try {
+      const result = await syncFromApify();
+      const duration = (Date.now() - startTime) / 1000;
+      
+      if (result.success) {
+        // Ajouter à l'historique
+        addSyncHistoryItem({
+          type: 'top30',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'success',
+          itemsFound: top30Stats.total,
+          itemsProcessed: top30Stats.total,
+          details: result.message,
+          duration
+        });
+        
+        // Mettre à jour les stats
+        setSyncStats(prev => ({
+          ...prev,
+          top30: {
+            lastSync: new Date().toISOString(),
+            lastType: 'manual',
+            itemCount: top30Stats.total
+          }
+        }));
+      } else {
+        addSyncHistoryItem({
+          type: 'top30',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'error',
+          errors: [result.message],
+          duration
+        });
+      }
+    } catch (error: any) {
+      const duration = (Date.now() - startTime) / 1000;
+      addSyncHistoryItem({
+        type: 'top30',
+        timestamp: new Date().toISOString(),
+        isManual: true,
+        status: 'error',
+        errors: [error.message || 'Erreur inconnue'],
+        duration
+      });
+    } finally {
+      setSyncing(prev => ({ ...prev, top30: false }));
+    }
+  };
+
+  const handleOfficialVideosSync = async () => {
+    setSyncing(prev => ({ ...prev, officialVideos: true }));
+    const startTime = Date.now();
+    
+    try {
+      const result = await syncOfficialVideos();
+      const duration = (Date.now() - startTime) / 1000;
+      
+      if (result.success) {
+        // Recharger les stats
+        const videosData = await getVideosFromSupabase();
+        const total = videosData?.videos.length || 0;
+        
+        // Ajouter à l'historique
+        addSyncHistoryItem({
+          type: 'official-videos',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'success',
+          itemsFound: total,
+          itemsProcessed: total,
+          details: result.message,
+          duration
+        });
+        
+        // Mettre à jour les stats
+        setSyncStats(prev => ({
+          ...prev,
+          officialVideos: {
+            lastSync: new Date().toISOString(),
+            lastType: 'manual',
+            itemCount: total
+          }
+        }));
+      } else {
+        addSyncHistoryItem({
+          type: 'official-videos',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'error',
+          errors: [result.message],
+          duration
+        });
+      }
+    } catch (error: any) {
+      const duration = (Date.now() - startTime) / 1000;
+      addSyncHistoryItem({
+        type: 'official-videos',
+        timestamp: new Date().toISOString(),
+        isManual: true,
+        status: 'error',
+        errors: [error.message || 'Erreur inconnue'],
+        duration
+      });
+    } finally {
+      setSyncing(prev => ({ ...prev, officialVideos: false }));
+    }
+  };
+
+  // Fonction pour ajouter manuellement une vidéo YouTube
+  const handleAddVideoManually = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!manualVideoForm.url.trim()) {
+      setManualVideoForm(prev => ({ ...prev, message: '❌ Veuillez saisir une URL YouTube' }));
+      return;
+    }
+
+    setManualVideoForm(prev => ({ ...prev, loading: true, message: '' }));
+
+    try {
+      const result = await addVideoManually(manualVideoForm.url.trim(), manualVideoForm.artist.trim() || undefined);
+      
+      if (result.success) {
+        setManualVideoForm({ url: '', artist: '', loading: false, message: `✅ ${result.message}` });
+        
+        // Recharger les stats après ajout réussi
+        try {
+          const videosData = await getVideosFromSupabase();
+          const total = videosData?.videos.length || 0;
+          setSyncStats(prev => ({
+            ...prev,
+            officialVideos: {
+              ...prev.officialVideos,
+              itemCount: total
+            }
+          }));
+        } catch (error) {
+          console.error('Erreur lors du rechargement des stats:', error);
+        }
+
+        // Déclencher l'événement pour mettre à jour la page OFFICIAL avec les nouvelles données
+        const updatedVideosData = await getVideosFromSupabase();
+        window.dispatchEvent(new CustomEvent('officialVideosUpdated', { 
+          detail: updatedVideosData 
+        }));
+      } else {
+        setManualVideoForm(prev => ({ ...prev, loading: false, message: `❌ ${result.message}` }));
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout manuel:', error);
+      setManualVideoForm(prev => ({ ...prev, loading: false, message: '❌ Erreur lors de l\'ajout de la vidéo' }));
+    }
+  };
+
+  // Fonction pour rechercher des vidéos dans la bibliothèque OFFICIAL
+  const handleSearchVideos = async (searchTerm: string = libraryManagement.searchTerm) => {
+    setLibraryManagement(prev => ({ ...prev, loading: true, message: '' }));
+
+    try {
+      const videos = await searchVideosInSupabase(searchTerm);
+      setLibraryManagement(prev => ({ 
+        ...prev, 
+        videos, 
+        loading: false,
+        message: `${videos.length} vidéo(s) trouvée(s)`
+      }));
+    } catch (error) {
+      console.error('Erreur lors de la recherche:', error);
+      setLibraryManagement(prev => ({ 
+        ...prev, 
+        loading: false, 
+        videos: [],
+        message: '❌ Erreur lors de la recherche'
+      }));
+    }
+  };
+
+  // Fonction pour ouvrir la modal de confirmation de suppression
+  const handleDeleteVideoClick = (video: any) => {
+    setLibraryManagement(prev => ({ 
+      ...prev, 
+      showDeleteModal: true, 
+      videoToDelete: video 
+    }));
+  };
+
+  // Fonction pour fermer la modal de suppression
+  const handleCancelDelete = () => {
+    setLibraryManagement(prev => ({ 
+      ...prev, 
+      showDeleteModal: false, 
+      videoToDelete: null 
+    }));
+  };
+
+  // Fonction pour confirmer et supprimer une vidéo
+  const handleConfirmDelete = async () => {
+    const video = libraryManagement.videoToDelete;
+    if (!video) return;
+
+    console.log('🔍 DEBUG - Vidéo à supprimer:', video);
+    console.log('🔍 DEBUG - videoId à supprimer:', video.videoId);
+
+    setLibraryManagement(prev => ({ ...prev, loading: true, message: '', showDeleteModal: false, videoToDelete: null }));
+
+    try {
+      const result = await deleteVideoFromSupabase(video.videoId);
+      
+      if (result.success) {
+        // 3. Déclencher l'événement pour mettre à jour la page OFFICIAL avec les nouvelles données
+{{ ... }}
+
+// ...
+
+                  </div>
+                  <div className="space-y-2 text-sm text-green-700">
+                    <p>Status: <span className="font-bold">Actif</span></p>
+                    <p>Automatisation: <span className="font-bold">24/7</span></p>
+                    <p>Dernière activité: <span className="font-bold">
+                      'N/A'
+                    </span></p>
+                    <p>Mode: <span className="font-bold">Production</span></p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ajout manuel de vidéos YouTube */}
+{{ ... }}
+              <div className="mt-8">
+                <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+                  <div className="flex items-center mb-4">
+                    <Plus className="w-6 h-6 text-purple-600 mr-3" />
+                    <h3 className="text-lg font-semibold text-gray-800">Ajouter une Vidéo YouTube</h3>
+                  </div>
+                  <p className="text-gray-600 mb-4 text-sm">
+                    Ajoutez manuellement une vidéo YouTube à la collection OFFICIAL en collant son URL.
+                  </p>
+                  
+                  <form onSubmit={handleAddVideoManually} className="space-y-4">
+                    <div>
+                      <label htmlFor="youtube-url" className="block text-sm font-medium text-gray-700 mb-2">
+                        URL YouTube *
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="youtube-url"
+                          type="url"
+                          value={manualVideoForm.url}
+                          onChange={(e) => setManualVideoForm(prev => ({ ...prev, url: e.target.value, message: '' }))}
+                          placeholder="https://www.youtube.com/watch?v=..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          disabled={manualVideoForm.loading}
+                        />
+                        <ExternalLink className="absolute right-3 top-2.5 w-4 h-4 text-gray-400" />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="artist-name" className="block text-sm font-medium text-gray-700 mb-2">
+                        Nom de l'artiste (optionnel)
+                      </label>
+                      <input
+                        id="artist-name"
+                        type="text"
+                        value={manualVideoForm.artist}
+                        onChange={(e) => setManualVideoForm(prev => ({ ...prev, artist: e.target.value }))}
+                        placeholder="Nom de l'artiste (détecté automatiquement si vide)"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        disabled={manualVideoForm.loading}
+                      />
+                    </div>
+                    
+                    <button
+                      type="submit"
+                      disabled={manualVideoForm.loading || !manualVideoForm.url.trim()}
+                      className="w-full flex items-center justify-center bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
+                    >
+                      <Plus className={`w-4 h-4 mr-2 ${manualVideoForm.loading ? 'animate-pulse' : ''}`} />
+                      {manualVideoForm.loading ? 'Ajout en cours...' : 'Ajouter à OFFICIAL'}
+                    </button>
+                    
+                    {manualVideoForm.message && (
+                      <div className="text-xs p-3 rounded-lg bg-gray-50 border">
+                        {manualVideoForm.message}
+                      </div>
+                    )}
+                  </form>
+                </div>
+              </div>
+              
+              {/* Informations sur l'automatisation */}
+              <div className="mt-8 bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <h4 className="font-semibold text-blue-800 mb-2">🤖 Automatisation via Cron Services</h4>
+                <div className="text-sm text-blue-700 space-y-1">
+                  <p>• <strong>Vidéos</strong>: Synchronisation optimisée toutes les heures (6h-14h EST) - 50 chaînes/heure</p>
+                  <p>• <strong>Top30</strong>: Synchronisation automatique 2x/semaine (Lundi & Jeudi à 9h EST) 💰</p>
+                  <p>• <strong>Keep-Alive</strong>: Ping automatique toutes les 6h pour éviter la pause Supabase</p>
+                  <p className="mt-2 text-xs">
+                    <strong>Optimisation</strong>: Rotation intelligente des 400 chaînes sur 8h, quota API réduit de 80%
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      
+      default:
+        return (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Vue d'ensemble</h2>
+              <p className="text-gray-600 mb-6">
+                Bienvenue dans le panneau d'administration de CountryMusic-Hub.com
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button
+                  onClick={() => setActiveSection('library-management')}
+                  className="flex items-center p-4 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors duration-200"
+                >
+                  <BarChart3 className="w-8 h-8 text-blue-600 mr-3" />
+                  <div className="text-left">
+                    <h3 className="font-semibold text-gray-800">Synchronisations</h3>
+                    <p className="text-sm text-gray-600">Gérer les vidéos et le classement</p>
+                  </div>
+                </button>
+                
+                <button
+                  onClick={() => setActiveSection('youtube-channels')}
+                  className="flex items-center p-4 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors duration-200"
+                >
+                  <Youtube className="w-8 h-8 text-red-600 mr-3" />
+                  <div className="text-left">
+                    <h3 className="font-semibold text-gray-800">YouTube Channels</h3>
+                    <p className="text-sm text-gray-600">Gérer les chaînes YouTube des artistes</p>
+                  </div>
+                </button>
+                
+              </div>
+            </div>
+          </div>
+        );
+    }
+  };
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4">
+        {/* Navigation */}
+        <div className="bg-white rounded-lg shadow-md mb-6">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <Settings className="w-8 h-8 text-indigo-600" />
+              <h1 className="text-2xl font-bold text-gray-800">Administration</h1>
+            </div>
+          </div>
+          
+          <nav className="px-6 py-2">
+            <nav className="space-y-1">
+              <button
+                onClick={() => setActiveSection('dashboard')}
+                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                  activeSection === 'dashboard'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <BarChart3 className="mr-3 h-4 w-4" />
+                Tableau de bord
+              </button>
+              
+              <button
+                onClick={() => setActiveSection('youtube-channels')}
+                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                  activeSection === 'youtube-channels'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <Youtube className="mr-3 h-4 w-4" />
+                Chaînes YouTube
+              </button>
+              
+              <button
+                onClick={() => setActiveSection('sync-history')}
+                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                  activeSection === 'sync-history'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <RefreshCw className="mr-3 h-4 w-4" />
+                Historique des Syncs
+              </button>
+              
+              <button
+                onClick={() => setActiveSection('youtube-channels')}
+                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                  activeSection === 'youtube-channels'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <Youtube className="mr-3 h-4 w-4" />
+                Chaînes YouTube
+              </button>
+              
+              <button
+                onClick={() => setActiveSection('library-management')}
+                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                  activeSection === 'library-management'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <Music className="mr-3 h-4 w-4" />
+                Bibliothèque OFFICIAL
+              </button>
+            </nav>
+          </nav>
+        </div>
+
+        {/* Contenu */}
+        <div className="max-w-full">
+          {renderContent()}
+        </div>
+      </div>
+
+      {/* Modal de confirmation de suppression */}
+      {libraryManagement.showDeleteModal && libraryManagement.videoToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirmer la suppression</h3>
+            
+            <div className="mb-6">
+              <p className="text-gray-700 mb-2">
+                Êtes-vous sûr de vouloir supprimer cette vidéo ?
+              </p>
+              <div className="bg-gray-50 p-3 rounded border">
+                <p className="font-medium text-gray-900 truncate">
+                  {libraryManagement.videoToDelete.title}
+                </p>
+                <p className="text-sm text-gray-600">
+                  {libraryManagement.videoToDelete.artist}
+                </p>
+              </div>
+              <p className="text-sm text-red-600 mt-2">
+                ⚠️ Cette action est irréversible. La vidéo sera ajoutée à la blacklist pour éviter sa réapparition automatique.
+              </p>
+            </div>
+            
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleCancelDelete}
+                disabled={libraryManagement.loading}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 rounded-lg font-medium transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={libraryManagement.loading}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-lg font-medium transition-colors"
+              >
+                {libraryManagement.loading ? 'Suppression...' : 'Supprimer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminPanel;

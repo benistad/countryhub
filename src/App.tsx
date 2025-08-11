@@ -10,7 +10,7 @@ import { useHomepageAutoRefresh } from './hooks/useHomepageAutoRefresh';
 import { Video } from './hooks/useOfficialVideos';
 import { SEOHead } from './components/SEOHead';
 import { AccessibilityEnhancements, LoadingAnnouncement } from './components/AccessibilityEnhancements';
-import { UpdateNotification, RefreshButton } from './components/UpdateNotification';
+import { UpdateNotification } from './components/UpdateNotification';
 import { HomepageNews } from './components/HomepageNews';
 
 function App() {
@@ -29,7 +29,6 @@ function App() {
     message: string;
     type: 'success' | 'info' | 'loading';
   }>({ show: false, message: '', type: 'info' });
-  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   
   // Hook d'actualisation automatique de la homepage
   const { setUpdateCallbacks, forceRefreshAll } = useHomepageAutoRefresh();
@@ -115,32 +114,31 @@ function App() {
     loadOfficialVideos();
   }, [getVideosFromSupabase]);
 
-  // Fonction de rafraîchissement manuel
-  const handleManualRefresh = async () => {
-    setIsManualRefreshing(true);
-    setNotification({
-      show: true,
-      message: 'Actualisation en cours...',
-      type: 'loading'
-    });
+  // Accès admin caché via combinaison de touches (Ctrl+Shift+A)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.shiftKey && event.key === 'A') {
+        event.preventDefault();
+        setActiveTab('admin');
+        setShowAdmin(true);
+        
+        // Notification discrète pour confirmer l'accès
+        setNotification({
+          show: true,
+          message: 'Admin panel activated',
+          type: 'info'
+        });
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [setActiveTab, setShowAdmin, setNotification]);
 
-    try {
-      await forceRefreshAll();
-      setNotification({
-        show: true,
-        message: 'Données mises à jour avec succès !',
-        type: 'success'
-      });
-    } catch (error) {
-      setNotification({
-        show: true,
-        message: 'Erreur lors de l\'actualisation',
-        type: 'info'
-      });
-    } finally {
-      setIsManualRefreshing(false);
-    }
-  };
+
 
   // Configuration des callbacks d'actualisation automatique
   useEffect(() => {
@@ -185,21 +183,19 @@ function App() {
     const checkAdminAccess = () => {
       const pathname = window.location.pathname;
       const hash = window.location.hash;
+      const search = window.location.search;
       
-      console.log('Checking admin access:', { pathname, hash });
+      // Accès admin caché via URL secrète ou paramètre
+      const isSecretAdminPath = pathname === '/secret-admin' || 
+                               pathname.endsWith('/secret-admin') ||
+                               hash === '#secret-admin' ||
+                               search.includes('admin=true');
       
-      const isAdminPath = pathname === '/admin' || 
-                         pathname.endsWith('/admin') ||
-                         hash === '#admin';
-      
-      console.log('Is admin path:', isAdminPath);
-      
-      return isAdminPath;
+      return isSecretAdminPath;
     };
 
     const initializeTabFromURL = () => {
       const pathname = window.location.pathname;
-      console.log('Initializing tab from URL:', pathname);
       
       if (pathname === '/official-videos' || pathname.endsWith('/official-videos')) {
         setActiveTab('official-videos');
@@ -218,17 +214,14 @@ function App() {
     const urlTab = initializeTabFromURL();
     
     if (isAdminPath) {
-      console.log('Setting admin access');
       setActiveTab('admin');
       setShowAdmin(true);
     } else if (urlTab) {
-      console.log('Setting tab from URL:', urlTab);
       setShowAdmin(false);
     }
     
     // Écouter les changements d'URL pour l'accès direct à l'admin
     const handleHashChange = () => {
-      console.log('Hash changed:', window.location.hash);
       if (checkAdminAccess()) {
         setActiveTab('admin');
         setShowAdmin(true);
@@ -344,15 +337,6 @@ function App() {
                     <Play className="w-5 h-5 inline mr-2" />
                     Watch Official Videos
                   </button>
-                </div>
-                
-                {/* Bouton de rafraîchissement automatique */}
-                <div className="mt-8 flex justify-center">
-                  <RefreshButton
-                    onRefresh={handleManualRefresh}
-                    isRefreshing={isManualRefreshing}
-                    lastUpdate={null}
-                  />
                 </div>
               </div>
             </header>

@@ -1,0 +1,513 @@
+import React, { useState, useEffect } from 'react';
+import { Youtube, Trophy, RefreshCw, BarChart3, Music, Video, Clock, CheckCircle, XCircle, AlertCircle, Info } from 'lucide-react';
+import { YouTubeChannelsManager } from './YouTubeChannelsManager';
+import { useTop30 } from '../hooks/useTop30';
+import { useOfficialVideos } from '../hooks/useOfficialVideos';
+import { useSupabaseOfficialVideos } from '../hooks/useSupabaseOfficialVideos';
+import { useSyncHistory, SyncHistoryEntry } from '../hooks/useSyncHistory';
+
+const AdminPanel: React.FC = () => {
+  const [activeSection, setActiveSection] = useState<'dashboard' | 'sync-history' | 'youtube-channels'>('dashboard');
+  const [syncing, setSyncing] = useState({ top30: false, officialVideos: false });
+  
+  const { syncFromApify, getStats: getTop30Stats, lastUpdate: top30LastUpdate } = useTop30();
+  const { syncOfficialVideos } = useOfficialVideos();
+  const { getVideosFromSupabase, getSyncStats } = useSupabaseOfficialVideos();
+  const { 
+    history, 
+    loading: historyLoading, 
+    getSyncStats: getHistorySyncStats, 
+    createSyncEntry, 
+    updateSyncEntry,
+    loadHistory 
+  } = useSyncHistory();
+
+  const top30Stats = getTop30Stats();
+
+  // Charger les statistiques et l'historique des synchronisations
+  useEffect(() => {
+    const loadSyncData = async () => {
+      try {
+        const videosData = await getVideosFromSupabase();
+        const officialVideosCount = videosData?.videos.length || 0;
+        
+        const syncStatsData = await getSyncStats();
+        const officialVideosLastSync = syncStatsData.length > 0 ? syncStatsData[0].last_sync_at : null;
+
+        const top30Count = top30Stats.total || 0;
+        
+        setSyncStats({
+          top30: { 
+            lastSync: top30LastUpdate, 
+            lastType: 'manual',
+            itemCount: top30Count 
+          },
+          news: { 
+            lastSync: null,
+            lastType: null, 
+            itemCount: 0 
+          },
+          officialVideos: { 
+            lastSync: officialVideosLastSync, 
+            lastType: 'auto',
+            itemCount: officialVideosCount 
+          }
+        });
+
+        const mockHistory: SyncHistoryItem[] = [
+          {
+            id: '1',
+            type: 'top30' as const,
+            timestamp: top30LastUpdate || new Date().toISOString(),
+            isManual: true,
+            status: 'success' as const,
+            itemsFound: top30Count,
+            itemsProcessed: top30Count,
+            duration: 5.2
+          },
+          {
+            id: '2',
+            type: 'official-videos' as const,
+            timestamp: officialVideosLastSync || new Date().toISOString(),
+            isManual: false,
+            status: 'success' as const,
+            itemsFound: officialVideosCount,
+            itemsProcessed: officialVideosCount,
+            duration: 12.8
+          }
+        ].filter(item => item.timestamp);
+        
+        setSyncHistory(mockHistory);
+      } catch (error) {
+        console.error('Erreur lors du chargement des données de sync:', error);
+      }
+    };
+
+    loadSyncData();
+  }, [activeSection, top30LastUpdate]);
+
+  const formatLastUpdate = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - date.getTime());
+      const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffHours < 1) {
+        return 'Il y a moins d\'1h';
+      } else if (diffHours < 24) {
+        return `Il y a ${diffHours}h`;
+      } else if (diffDays === 1) {
+        return 'Hier';
+      } else if (diffDays < 7) {
+        return `Il y a ${diffDays} jours`;
+      } else {
+        return date.toLocaleDateString('fr-FR', { 
+          day: 'numeric',
+          month: 'short',
+          year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+        });
+      }
+    } catch {
+      return 'Date invalide';
+    }
+  };
+
+  const addSyncHistoryItem = (item: Omit<SyncHistoryItem, 'id'>) => {
+    const newItem: SyncHistoryItem = {
+      ...item,
+      id: Date.now().toString()
+    };
+    setSyncHistory(prev => [newItem, ...prev].slice(0, 50));
+  };
+
+  const handleTop30Sync = async () => {
+    setSyncing(prev => ({ ...prev, top30: true }));
+    const startTime = Date.now();
+    
+    try {
+      const result = await syncFromApify();
+      const duration = (Date.now() - startTime) / 1000;
+      
+      if (result.success) {
+        addSyncHistoryItem({
+          type: 'top30',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'success',
+          itemsFound: top30Stats.total,
+          itemsProcessed: top30Stats.total,
+          details: result.message,
+          duration
+        });
+        
+        setSyncStats(prev => ({
+          ...prev,
+          top30: {
+            lastSync: new Date().toISOString(),
+            lastType: 'manual',
+            itemCount: top30Stats.total
+          }
+        }));
+      } else {
+        addSyncHistoryItem({
+          type: 'top30',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'error',
+          errors: [result.message],
+          duration
+        });
+      }
+    } catch (error: any) {
+      const duration = (Date.now() - startTime) / 1000;
+      addSyncHistoryItem({
+        type: 'top30',
+        timestamp: new Date().toISOString(),
+        isManual: true,
+        status: 'error',
+        errors: [error.message || 'Erreur inconnue'],
+        duration
+      });
+    } finally {
+      setSyncing(prev => ({ ...prev, top30: false }));
+    }
+  };
+
+  const handleOfficialVideosSync = async () => {
+    setSyncing(prev => ({ ...prev, officialVideos: true }));
+    const startTime = Date.now();
+    
+    try {
+      const result = await syncOfficialVideos();
+      const duration = (Date.now() - startTime) / 1000;
+      
+      if (result.success) {
+        const videosData = await getVideosFromSupabase();
+        const total = videosData?.videos.length || 0;
+        
+        addSyncHistoryItem({
+          type: 'official-videos',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'success',
+          itemsFound: total,
+          itemsProcessed: total,
+          details: result.message,
+          duration
+        });
+        
+        setSyncStats(prev => ({
+          ...prev,
+          officialVideos: {
+            lastSync: new Date().toISOString(),
+            lastType: 'manual',
+            itemCount: total
+          }
+        }));
+      } else {
+        addSyncHistoryItem({
+          type: 'official-videos',
+          timestamp: new Date().toISOString(),
+          isManual: true,
+          status: 'error',
+          errors: [result.message],
+          duration
+        });
+      }
+    } catch (error: any) {
+      const duration = (Date.now() - startTime) / 1000;
+      addSyncHistoryItem({
+        type: 'official-videos',
+        timestamp: new Date().toISOString(),
+        isManual: true,
+        status: 'error',
+        errors: [error.message || 'Erreur inconnue'],
+        duration
+      });
+    } finally {
+      setSyncing(prev => ({ ...prev, officialVideos: false }));
+    }
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'top30': return <Trophy className="w-4 h-4" />;
+      case 'news': return <Music className="w-4 h-4" />;
+      case 'official-videos': return <Video className="w-4 h-4" />;
+      default: return <BarChart3 className="w-4 h-4" />;
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'success': return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'error': return <XCircle className="w-4 h-4 text-red-500" />;
+      case 'partial': return <AlertCircle className="w-4 h-4 text-yellow-500" />;
+      default: return <Clock className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'top30': return 'Top 30';
+      case 'news': return 'News';
+      case 'official-videos': return 'Vidéos Officielles';
+      default: return type;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Administration</h1>
+          <p className="text-gray-600">Gestion et synchronisation des données Country Music Hub</p>
+        </div>
+
+        {/* Navigation */}
+        <div className="mb-8">
+          <nav className="flex space-x-1 bg-white rounded-lg p-1 shadow-sm">
+            {[
+              { key: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+              { key: 'sync-history', label: 'Historique', icon: Clock },
+              { key: 'youtube-channels', label: 'Chaînes YouTube', icon: Youtube }
+            ].map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setActiveSection(key as any)}
+                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeSection === key
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Icon className="w-4 h-4 mr-2" />
+                {label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Dashboard Section */}
+        {activeSection === 'dashboard' && (
+          <div className="space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Top 30 Card */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center">
+                    <Trophy className="w-5 h-5 text-yellow-500 mr-2" />
+                    <h3 className="text-lg font-semibold">Top 30</h3>
+                  </div>
+                  <span className="text-2xl font-bold text-gray-900">{syncStats.top30.itemCount}</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Dernière sync:</span>
+                    <span className="text-gray-900">
+                      {syncStats.top30.lastSync ? formatLastUpdate(syncStats.top30.lastSync) : 'Jamais'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Type:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      syncStats.top30.lastType === 'manual' 
+                        ? 'bg-blue-100 text-blue-800' 
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {syncStats.top30.lastType === 'manual' ? 'Manuel' : 'Auto'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={handleTop30Sync}
+                  disabled={syncing.top30}
+                  className="w-full mt-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {syncing.top30 ? (
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                  )}
+                  Synchroniser
+                </button>
+              </div>
+
+              {/* News Card */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center">
+                    <Music className="w-5 h-5 text-purple-500 mr-2" />
+                    <h3 className="text-lg font-semibold">News</h3>
+                  </div>
+                  <span className="text-2xl font-bold text-gray-900">{syncStats.news.itemCount}</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Dernière sync:</span>
+                    <span className="text-gray-900">
+                      {syncStats.news.lastSync ? formatLastUpdate(syncStats.news.lastSync) : 'Auto'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Type:</span>
+                    <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                      Auto (30min)
+                    </span>
+                  </div>
+                </div>
+                <button
+                  disabled
+                  className="w-full mt-4 bg-gray-300 text-gray-500 px-4 py-2 rounded-md cursor-not-allowed"
+                >
+                  Synchronisation automatique
+                </button>
+              </div>
+
+              {/* Official Videos Card */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center">
+                    <Video className="w-5 h-5 text-red-500 mr-2" />
+                    <h3 className="text-lg font-semibold">Vidéos Officielles</h3>
+                  </div>
+                  <span className="text-2xl font-bold text-gray-900">{syncStats.officialVideos.itemCount}</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Dernière sync:</span>
+                    <span className="text-gray-900">
+                      {syncStats.officialVideos.lastSync ? formatLastUpdate(syncStats.officialVideos.lastSync) : 'Jamais'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Type:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      syncStats.officialVideos.lastType === 'manual' 
+                        ? 'bg-blue-100 text-blue-800' 
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {syncStats.officialVideos.lastType === 'manual' ? 'Manuel' : 'Auto (quotidien)'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={handleOfficialVideosSync}
+                  disabled={syncing.officialVideos}
+                  className="w-full mt-4 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {syncing.officialVideos ? (
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                  )}
+                  Synchroniser
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sync History Section */}
+        {activeSection === 'sync-history' && (
+          <div className="bg-white rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold">Historique des Synchronisations</h2>
+              <p className="text-gray-600 mt-1">Détails des dernières synchronisations effectuées</p>
+            </div>
+            <div className="p-6">
+              {syncHistory.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Clock className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p>Aucun historique de synchronisation disponible</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {syncHistory.map((item) => (
+                    <div key={item.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-3">
+                          {getTypeIcon(item.type)}
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <h3 className="font-medium">{getTypeLabel(item.type)}</h3>
+                              {getStatusIcon(item.status)}
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                item.isManual 
+                                  ? 'bg-blue-100 text-blue-800' 
+                                  : 'bg-green-100 text-green-800'
+                              }`}>
+                                {item.isManual ? 'Manuel' : 'Automatique'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-500 mt-1">
+                              {formatLastUpdate(item.timestamp)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right text-sm text-gray-500">
+                          {item.duration && <p>{item.duration.toFixed(1)}s</p>}
+                        </div>
+                      </div>
+                      
+                      {(item.itemsFound !== undefined || item.itemsProcessed !== undefined) && (
+                        <div className="mt-3 flex space-x-4 text-sm">
+                          {item.itemsFound !== undefined && (
+                            <span className="text-gray-600">
+                              <strong>Trouvés:</strong> {item.itemsFound}
+                            </span>
+                          )}
+                          {item.itemsProcessed !== undefined && (
+                            <span className="text-gray-600">
+                              <strong>Traités:</strong> {item.itemsProcessed}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      
+                      {item.details && (
+                        <div className="mt-2 text-sm text-gray-700 bg-gray-50 rounded p-2">
+                          {item.details}
+                        </div>
+                      )}
+                      
+                      {item.errors && item.errors.length > 0 && (
+                        <div className="mt-2 text-sm text-red-700 bg-red-50 rounded p-2">
+                          <strong>Erreurs:</strong>
+                          <ul className="list-disc list-inside mt-1">
+                            {item.errors.map((error, index) => (
+                              <li key={index}>{error}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* YouTube Channels Section */}
+        {activeSection === 'youtube-channels' && (
+          <div className="bg-white rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold">Gestion des Chaînes YouTube</h2>
+              <p className="text-gray-600 mt-1">Configuration des chaînes pour la synchronisation automatique</p>
+            </div>
+            <div className="p-6">
+              <YouTubeChannelsManager />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default AdminPanel;
