@@ -9,6 +9,7 @@ const AdminPanel: React.FC = () => {
   const [activeSection, setActiveSection] = useState<'overview' | 'youtube-channels' | 'sync-management' | 'library-management'>('overview');
   const [syncing, setSyncing] = useState({ top30: false, officialVideos: false });
   const [syncMessage, setSyncMessage] = useState<string>('');
+  const [top30SyncMessage, setTop30SyncMessage] = useState<string>('');
   const [officialVideosStats, setOfficialVideosStats] = useState({ total: 0, lastSync: null as string | null });
   const [manualVideoForm, setManualVideoForm] = useState({ url: '', artist: '', loading: false, message: '' });
   const [libraryManagement, setLibraryManagement] = useState({ 
@@ -90,11 +91,22 @@ const AdminPanel: React.FC = () => {
    */
   const handleTop30Sync = async () => {
     setSyncing(prev => ({ ...prev, top30: true }));
+    setTop30SyncMessage('');
+    
     try {
       const result = await syncFromApify();
       console.log('Synchronisation Top30 terminée:', result);
+      
+      if (result.success) {
+        setTop30SyncMessage(`✅ ${result.message}`);
+        // Recharger les stats après synchronisation réussie
+        setTimeout(() => setTop30SyncMessage(''), 5000);
+      } else {
+        setTop30SyncMessage(`❌ ${result.message}`);
+      }
     } catch (error) {
       console.error('Erreur lors de la synchronisation Top30:', error);
+      setTop30SyncMessage(`❌ Erreur: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     } finally {
       setSyncing(prev => ({ ...prev, top30: false }));
     }
@@ -510,12 +522,17 @@ const AdminPanel: React.FC = () => {
                   <button
                     onClick={handleTop30Sync}
                     disabled={syncing.top30}
-                    className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
+                    className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 mb-3"
                   >
                     <RefreshCw className={`w-4 h-4 mr-2 ${syncing.top30 ? 'animate-spin' : ''}`} />
                     {syncing.top30 ? 'Synchronisation...' : 'Synchroniser le Top30'}
                   </button>
-                  <p className="text-xs text-gray-500 mt-2">
+                  {top30SyncMessage && (
+                    <div className="text-xs p-2 rounded bg-gray-50 border mb-2">
+                      {top30SyncMessage}
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-500">
                     💰 Auto: 2x/semaine (Lundi & Jeudi) pour économiser
                   </p>
                 </div>

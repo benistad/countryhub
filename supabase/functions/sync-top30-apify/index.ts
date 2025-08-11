@@ -103,16 +103,19 @@ Deno.serve(async (req: Request) => {
 
     console.log(`✅ ${top30Items.length} éléments du Top 30 récupérés depuis Apify`);
 
-    // ÉTAPE 2: Nettoyer les anciennes données du jour
+    // ÉTAPE 2: Supprimer TOUTES les anciennes données (remplacement complet)
     const today = new Date().toISOString().split('T')[0];
     
+    console.log("🗑️ Suppression de toutes les anciennes données Top30...");
     const { error: deleteError } = await supabase
       .from('top30_country')
       .delete()
-      .eq('chart_date', today);
+      .neq('id', 0); // Supprime toutes les entrées
 
     if (deleteError) {
       console.warn("⚠️ Erreur lors de la suppression des anciennes données:", deleteError);
+    } else {
+      console.log("✅ Toutes les anciennes données supprimées");
     }
 
     // ÉTAPE 3: Insérer les nouvelles données
