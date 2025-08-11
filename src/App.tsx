@@ -5,20 +5,34 @@ import { GoogleNewsRSS } from './components/GoogleNewsRSS';
 import { Top30Page } from './components/Top30Page';
 import { OfficialVideos } from './components/OfficialVideos';
 import { useTop30 } from './hooks/useTop30';
-import { useCountryNews } from './hooks/useCountryNews';
 import { useSupabaseOfficialVideos } from './hooks/useSupabaseOfficialVideos';
+import { useHomepageAutoRefresh } from './hooks/useHomepageAutoRefresh';
 import { Video } from './hooks/useOfficialVideos';
 import { SEOHead } from './components/SEOHead';
 import { AccessibilityEnhancements, LoadingAnnouncement } from './components/AccessibilityEnhancements';
+import { UpdateNotification, RefreshButton } from './components/UpdateNotification';
+import { HomepageNews } from './components/HomepageNews';
 
 function App() {
   const [activeTab, setActiveTab] = useState('home');
-  const { news, loading: newsLoading } = useCountryNews();
+  
+  // Hooks pour les données
   const { items: top30Items, loading: top30Loading } = useTop30();
   const { getVideosFromSupabase } = useSupabaseOfficialVideos();
   const [showAdmin, setShowAdmin] = useState(true);
   const [officialVideos, setOfficialVideos] = useState<Video[]>([]);
   const [officialVideosLoading, setOfficialVideosLoading] = useState(true);
+  
+  // États pour les notifications d'actualisation
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    message: string;
+    type: 'success' | 'info' | 'loading';
+  }>({ show: false, message: '', type: 'info' });
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+  
+  // Hook d'actualisation automatique de la homepage
+  const { setUpdateCallbacks, forceRefreshAll } = useHomepageAutoRefresh();
 
   // SEO data for each page
   const getSEOData = (tab: string) => {
@@ -79,25 +93,89 @@ function App() {
     return seoData[tab as keyof typeof seoData] || seoData.home;
   };
 
+  // Fonction pour charger les vidéos officielles
+  const loadOfficialVideos = async () => {
+    try {
+      setOfficialVideosLoading(true);
+      const videosData = await getVideosFromSupabase();
+      if (videosData && videosData.videos) {
+        // Prendre les 3 dernières vidéos
+        setOfficialVideos(videosData.videos.slice(0, 3));
+        console.log('🎬 Vidéos officielles mises à jour pour la homepage');
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des vidéos officielles:', error);
+    } finally {
+      setOfficialVideosLoading(false);
+    }
+  };
+
   // Charger les 3 dernières vidéos officielles pour la homepage
   useEffect(() => {
-    const loadOfficialVideos = async () => {
-      try {
-        setOfficialVideosLoading(true);
-        const videosData = await getVideosFromSupabase();
-        if (videosData && videosData.videos) {
-          // Prendre les 3 dernières vidéos
-          setOfficialVideos(videosData.videos.slice(0, 3));
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des vidéos officielles:', error);
-      } finally {
-        setOfficialVideosLoading(false);
-      }
-    };
-
     loadOfficialVideos();
   }, [getVideosFromSupabase]);
+
+  // Fonction de rafraîchissement manuel
+  const handleManualRefresh = async () => {
+    setIsManualRefreshing(true);
+    setNotification({
+      show: true,
+      message: 'Actualisation en cours...',
+      type: 'loading'
+    });
+
+    try {
+      await forceRefreshAll();
+      setNotification({
+        show: true,
+        message: 'Données mises à jour avec succès !',
+        type: 'success'
+      });
+    } catch (error) {
+      setNotification({
+        show: true,
+        message: 'Erreur lors de l\'actualisation',
+        type: 'info'
+      });
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  };
+
+  // Configuration des callbacks d'actualisation automatique
+  useEffect(() => {
+    setUpdateCallbacks({
+      onTop30Updated: () => {
+        console.log('🎵 Top30 mis à jour - Actualisation de la homepage');
+        setNotification({
+          show: true,
+          message: 'Top 30 mis à jour automatiquement',
+          type: 'success'
+        });
+      },
+      onNewsUpdated: () => {
+        console.log('📰 News mises à jour - Actualisation de la homepage');
+        // Rafraîchir le composant HomepageNews
+        if ((window as any).refreshHomepageNews) {
+          (window as any).refreshHomepageNews();
+        }
+        setNotification({
+          show: true,
+          message: 'Actualités mises à jour automatiquement',
+          type: 'success'
+        });
+      },
+      onVideosUpdated: () => {
+        console.log('🎬 Vidéos mises à jour - Rechargement des vidéos officielles');
+        loadOfficialVideos();
+        setNotification({
+          show: true,
+          message: 'Vidéos officielles mises à jour automatiquement',
+          type: 'success'
+        });
+      }
+    });
+  }, [setUpdateCallbacks, forceRefreshAll]);
 
   // Les news sont maintenant gérées par le hook useCountryNews qui lit depuis Supabase
   // La synchronisation avec GNews API se fait via l'Edge Function sync-gnews-country
@@ -266,6 +344,15 @@ function App() {
                     <Play className="w-5 h-5 inline mr-2" />
                     Watch Official Videos
                   </button>
+                </div>
+                
+                {/* Bouton de rafraîchissement automatique */}
+                <div className="mt-8 flex justify-center">
+                  <RefreshButton
+                    onRefresh={handleManualRefresh}
+                    isRefreshing={isManualRefreshing}
+                    lastUpdate={null}
+                  />
                 </div>
               </div>
             </header>
@@ -452,101 +539,7 @@ function App() {
                 </p>
               </div>
               
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-8 border border-blue-100">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center">
-                    <div className="bg-blue-500 p-3 rounded-xl mr-4">
-                      <Rss className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-gray-800">Hot Stories</h3>
-                      <p className="text-gray-600">Real-time updates from top sources</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleTabClick('country-news')}
-                    className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 shadow-md hover:shadow-lg"
-                    aria-label="View all news"
-                  >
-                    Read All News
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </button>
-                </div>
-                
-                {newsLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3, 4, 5, 6].map(i => (
-                      <div key={i} className="bg-white rounded-2xl shadow-md p-6 animate-pulse">
-                        <div className="h-4 bg-gray-200 rounded mb-3"></div>
-                        <div className="h-3 bg-gray-200 rounded w-2/3 mb-3"></div>
-                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  news.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {news.slice(0, 6).map((article, index) => (
-                        <article key={article.id || article.title} className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                          {/* Image Section */}
-                          <div className="aspect-video bg-gradient-to-br from-blue-100 to-indigo-100 overflow-hidden">
-                            {article.image_url ? (
-                              <img 
-                                src={article.image_url} 
-                                alt={article.title}
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Rss className="w-12 h-12 text-blue-300" />
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Content Section */}
-                          <div className="p-6">
-                            <div className="mb-4">
-                              <h3 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2 leading-tight">
-                                {article.title}
-                              </h3>
-                              <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed">
-                                {article.description || 'Découvrez les dernières actualités du monde de la musique country...'}
-                              </p>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
-                                {index === 0 ? 'Latest' : 'Breaking'}
-                              </span>
-                              <span className="text-gray-500">{new Date(article.pub_date).toLocaleDateString('fr-FR')}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
-                                {index === 0 ? 'Latest' : 'Breaking'}
-                              </span>
-                              <a 
-                                href={article.link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-700 text-sm font-medium hover:underline transition-colors"
-                              >
-                                Read More →
-                              </a>
-                            </div>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      <Rss className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500 text-lg">Aucun article disponible pour le moment</p>
-                      <p className="text-gray-400 text-sm mt-2">Les dernières actualités country seront bientôt disponibles</p>
-                      <p className="text-gray-400 text-xs mt-2">Debug: {news.length} articles chargés</p>
-                    </div>
-                  )
-                )}
-              </div>
+              <HomepageNews onViewAllClick={() => handleTabClick('country-news')} />
             </section>
 
             {/* Enhanced Stats Section */}
@@ -628,7 +621,7 @@ function App() {
       />
       <AccessibilityEnhancements currentPage={currentPageName} />
       <LoadingAnnouncement 
-        isLoading={newsLoading || top30Loading || officialVideosLoading} 
+        isLoading={top30Loading || officialVideosLoading} 
         content="page content" 
       />
 
@@ -750,6 +743,14 @@ function App() {
           </div>
         </div>
       </footer>
+      
+      {/* Notification d'actualisation automatique */}
+      <UpdateNotification
+        show={notification.show}
+        message={notification.message}
+        type={notification.type}
+        onClose={() => setNotification(prev => ({ ...prev, show: false }))}
+      />
     </div>
   );
 }

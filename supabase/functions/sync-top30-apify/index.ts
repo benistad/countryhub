@@ -91,141 +91,50 @@ Deno.serve(async (req: Request) => {
       "excludes": [],
       "pageFunction": `
         async function pageFunction(context) {
-          const $ = context.jQuery;
+          const { request } = context;
+
+          // 1) Chaque entrée a une image avec alt = "Titre - Artiste Cover Art"
+          const imgs = Array.from(document.querySelectorAll('img[alt$="Cover Art"]'));
           const items = [];
-          
-          // Debug: log page title and content
-          context.log.info('Page title: ' + $('title').text());
-          context.log.info('Page content length: ' + $('body').text().length);
-          
-          // Attendre que le contenu se charge
-          await context.page.waitForTimeout(3000);
-          
-          // Chercher spécifiquement les données du Top 30
-          context.log.info('Looking for chart data...');
-          
-          // Essayer plusieurs sélecteurs pour PopVortex
-          const selectors = [
-            'table.chart-table tr',
-            'table tr:has(td)',
-            '.chart-container tr',
-            '.top-songs tr',
-            'table tbody tr',
-            'tr:has(.song-title)',
-            'tr:has(.artist)',
-            'table tr',
-            '.chart-row',
-            '.song-row',
-            '.track-row',
-            'tbody tr',
-            '.chart-item',
-            'tr'
-          ];
-          
-          let foundData = false;
-          
-          for (const selector of selectors) {
-            const elements = $(selector);
-            context.log.info('Trying selector: ' + selector + ', found: ' + elements.length + ' elements');
-            
-            if (elements.length > 1) { // Au moins quelques éléments trouvés
-              elements.each((index, element) => {
-                if (index >= 30) return false; // Limiter à 30
-                
-                const $el = $(element);
-                const text = $el.text().trim();
-                
-                // Essayer d'extraire rank, title, artist de différentes façons
-                const cells = $el.find('td');
-                let rank, title, artist, appleMusicUrl;
-                
-                // Log pour debug
-                context.log.info('Processing element ' + index + ': ' + $el.text().substring(0, 100));
-                
-                if (cells.length >= 2) {
-                  // Structure tableau PopVortex
-                  context.log.info('Found ' + cells.length + ' cells in row ' + index);
-                  
-                  // Essayer différentes configurations de colonnes
-                  if (cells.length >= 3) {
-                    rank = cells.eq(0).text().trim();
-                    title = cells.eq(1).text().trim();
-                    artist = cells.eq(2).text().trim();
-                  } else if (cells.length === 2) {
-                    // Peut-être pas de colonne rank
-                    title = cells.eq(0).text().trim();
-                    artist = cells.eq(1).text().trim();
-                    rank = (index + 1).toString();
-                  }
-                  
-                  appleMusicUrl = $el.find('a[href*="music.apple.com"], a[href*="itunes.apple.com"]').attr('href');
-                  
-                  context.log.info('Extracted: rank=' + rank + ', title=' + title + ', artist=' + artist);
-                } else {
-                  // Essayer d'autres structures
-                  rank = $el.find('.rank, .position, .number').first().text().trim() || (index + 1).toString();
-                  title = $el.find('.title, .song, .track').first().text().trim();
-                  artist = $el.find('.artist, .performer').first().text().trim();
-                  appleMusicUrl = $el.find('a[href*="music.apple.com"], a[href*="itunes.apple.com"]').attr('href');
-                  
-                  // Si pas trouvé, essayer le texte brut
-                  if (!title && text.length > 10) {
-                    const parts = text.split(/[\\n\\t\\r]+/).filter(p => p.trim() && p.length > 2);
-                    context.log.info('Text parts: ' + JSON.stringify(parts.slice(0, 5)));
-                    
-                    if (parts.length >= 2) {
-                      // Essayer de détecter title et artist dans les parties
-                      for (let i = 0; i < parts.length - 1; i++) {
-                        if (!title && parts[i].length > 3 && !parts[i].match(/^\\d+$/)) {
-                          title = parts[i];
-                          if (i + 1 < parts.length && parts[i + 1].length > 2) {
-                            artist = parts[i + 1];
-                          }
-                          break;
-                        }
-                      }
-                    }
-                  }
-                }
-                
-                // Nettoyer les données
-                rank = parseInt(rank) || index + 1;
-                title = title ? title.replace(/[\\n\\t\\r]+/g, ' ').trim() : '';
-                artist = artist ? artist.replace(/[\\n\\t\\r]+/g, ' ').trim() : '';
-                
-                // Filtrer les éléments de navigation/interface
-                const isNavigation = title.includes('search') || title.includes('×') || 
-                                   artist.includes('×') || artist.includes('search') ||
-                                   title.toLowerCase().includes('menu') || 
-                                   artist.toLowerCase().includes('menu') ||
-                                   text.includes('navbar') || text.includes('dropdown');
-                
-                context.log.info('After cleaning: rank=' + rank + ', title="' + title + '", artist="' + artist + '", isNav=' + isNavigation);
-                
-                if (title && artist && title.length > 1 && artist.length > 1 && !isNavigation) {
-                  items.push({
-                    rank: rank,
-                    title: title,
-                    artist: artist,
-                    appleMusicUrl: appleMusicUrl || undefined
-                  });
-                  foundData = true;
-                }
-              });
-              
-              if (foundData) {
-                context.log.info('Successfully extracted ' + items.length + ' items with selector: ' + selector);
-                break; // Arrêter si on a trouvé des données
+
+          for (let i = 0; i < imgs.length && items.length < 30; i++) {
+            const img = imgs[i];
+
+            // Titre / artiste depuis l'attribut alt
+            const alt = img.getAttribute('alt') || '';
+            const m = alt.match(/^(.*?)\\s*-\\s*(.*?)\\s+Cover Art$/);
+            const title = (m && m[1]) ? m[1].trim() : '';
+            const artist = (m && m[2]) ? m[2].trim() : '';
+
+            // 2) Remonter à un conteneur raisonnable puis chercher le lien Apple
+            // (sur la page, c'est l'ancre "Apple Music / iTunes" vers music.apple.com)
+            let appleMusicUrl = '';
+            let node = img;
+            // On monte un peu dans le DOM pour tomber sur le bloc qui contient l'ancre
+            for (let up = 0; up < 5 && node; up++) {
+              const link = node.querySelector && node.querySelector('a[href*="music.apple.com"]');
+              if (link && link.href) {
+                appleMusicUrl = link.href;
+                break;
               }
+              node = node.parentElement;
+            }
+
+            if (title) {
+              items.push({
+                rank: items.length + 1,
+                title,
+                artist,
+                appleMusicUrl
+              });
             }
           }
-          
-          // Si aucune donnée trouvée, logger le contenu de la page pour debug
-          if (items.length === 0) {
-            context.log.info('No data found. Page HTML sample: ' + $('body').html().substring(0, 1000));
-          }
-          
-          return { items: items.slice(0, 30) };
+
+          return {
+            url: request.url,
+            extractedAt: new Date().toISOString(),
+            items
+          };
         }
       `,
       "injectJQuery": true,

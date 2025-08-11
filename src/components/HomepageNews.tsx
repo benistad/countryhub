@@ -1,0 +1,256 @@
+import { useState, useEffect } from 'react';
+import { Rss, ArrowRight } from 'lucide-react';
+
+interface NewsItem {
+  title: string;
+  link: string;
+  description: string;
+  pubDate: string;
+  source: string;
+  guid: string;
+  imageUrl?: string;
+}
+
+interface HomepageNewsProps {
+  onViewAllClick: () => void;
+}
+
+/**
+ * Composant pour afficher un aperçu des actualités country music sur la homepage
+ * Utilise la même API GNews que la page NEWS pour garantir la cohérence
+ */
+export const HomepageNews: React.FC<HomepageNewsProps> = ({ onViewAllClick }) => {
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Configuration GNews API (identique à GoogleNewsRSS)
+  const GNEWS_API_KEY = import.meta.env.VITE_GNEWS_API_KEY || '51b0d3ddea619a88159c2a793a9dca83';
+  const GNEWS_BASE_URL = 'https://gnews.io/api/v4/search';
+
+  // Fonction pour générer une image de fallback thématique
+  const generateFallbackImage = (title: string): string => {
+    const keywords = title.toLowerCase();
+    
+    if (keywords.includes('album') || keywords.includes('release')) {
+      return 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop&crop=center';
+    } else if (keywords.includes('concert') || keywords.includes('tour') || keywords.includes('live')) {
+      return 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=400&h=300&fit=crop&crop=center';
+    } else if (keywords.includes('award') || keywords.includes('grammy') || keywords.includes('cma')) {
+      return 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop&crop=center';
+    } else if (keywords.includes('nashville') || keywords.includes('country')) {
+      return 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop&crop=center';
+    }
+    
+    return 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop&crop=center';
+  };
+
+  // Fonction pour récupérer les actualités via GNews API
+  const fetchNews = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      console.log('📡 [Homepage] Récupération des actualités country via GNews API...');
+      
+      const params = new URLSearchParams({
+        q: 'country music',
+        lang: 'en',
+        country: 'us',
+        max: '6', // Seulement 6 articles pour la homepage
+        apikey: GNEWS_API_KEY
+      });
+      
+      const gnewsUrl = `${GNEWS_BASE_URL}?${params}`;
+      
+      const response = await fetch(gnewsUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'CountryMusicHub/1.0'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`GNews API HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.articles || !Array.isArray(data.articles)) {
+        throw new Error('Format de réponse GNews invalide');
+      }
+      
+      // Transformer les articles GNews en format NewsItem
+      const newsItems: NewsItem[] = data.articles.map((article: any, index: number) => ({
+        title: article.title || '',
+        link: article.url || '',
+        description: article.description || '',
+        pubDate: article.publishedAt || new Date().toISOString(),
+        source: article.source?.name || 'GNews',
+        guid: article.url || `gnews-homepage-${index}`,
+        imageUrl: article.image || generateFallbackImage(article.title || '')
+      }));
+      
+      console.log(`📰 [Homepage] ${newsItems.length} articles country music récupérés`);
+      console.log(`🖼️ [Homepage] ${newsItems.filter(a => a.imageUrl).length}/${newsItems.length} articles avec images`);
+      
+      setNews(newsItems);
+      
+    } catch (err) {
+      console.error('❌ [Homepage] Erreur lors de la récupération des actualités:', err);
+      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Charger les actualités au montage du composant
+  useEffect(() => {
+    fetchNews();
+  }, []);
+
+  // Fonction pour rafraîchir les actualités (appelée par le système d'auto-refresh)
+  const refreshNews = () => {
+    fetchNews();
+  };
+
+  // Exposer la fonction refresh pour l'auto-refresh
+  useEffect(() => {
+    (window as any).refreshHomepageNews = refreshNews;
+    return () => {
+      delete (window as any).refreshHomepageNews;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-8 border border-blue-100">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center">
+            <div className="bg-blue-500 p-3 rounded-xl mr-4">
+              <Rss className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-gray-800">Hot Stories</h3>
+              <p className="text-gray-600">Real-time updates from top sources</p>
+            </div>
+          </div>
+          <button
+            onClick={onViewAllClick}
+            className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 shadow-md hover:shadow-lg"
+          >
+            Read All News
+            <ArrowRight className="w-5 h-5 ml-2" />
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="bg-white rounded-2xl shadow-md p-6 animate-pulse">
+              <div className="h-4 bg-gray-200 rounded mb-3"></div>
+              <div className="h-3 bg-gray-200 rounded w-2/3 mb-3"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-8 border border-blue-100">
+        <div className="text-center py-12">
+          <Rss className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-500 text-lg">Erreur lors du chargement des actualités</p>
+          <p className="text-gray-400 text-sm mt-2">{error}</p>
+          <button
+            onClick={fetchNews}
+            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-8 border border-blue-100">
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center">
+          <div className="bg-blue-500 p-3 rounded-xl mr-4">
+            <Rss className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold text-gray-800">Hot Stories</h3>
+            <p className="text-gray-600">Real-time updates from top sources</p>
+          </div>
+        </div>
+        <button
+          onClick={onViewAllClick}
+          className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 shadow-md hover:shadow-lg"
+        >
+          Read All News
+          <ArrowRight className="w-5 h-5 ml-2" />
+        </button>
+      </div>
+      
+      {news.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {news.map((article, index) => (
+            <article key={article.guid} className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+              {/* Image Section */}
+              <div className="aspect-video bg-gradient-to-br from-blue-100 to-indigo-100 overflow-hidden">
+                {article.imageUrl ? (
+                  <img 
+                    src={article.imageUrl} 
+                    alt={article.title}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Rss className="w-12 h-12 text-blue-300" />
+                  </div>
+                )}
+              </div>
+              
+              {/* Content Section */}
+              <div className="p-6">
+                <div className="mb-4">
+                  <h3 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2 leading-tight">
+                    {article.title}
+                  </h3>
+                  <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed">
+                    {article.description || 'Découvrez les dernières actualités du monde de la musique country...'}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
+                    {index === 0 ? 'Latest' : 'Breaking'}
+                  </span>
+                  <a 
+                    href={article.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-700 text-sm font-medium hover:underline transition-colors"
+                  >
+                    Read More →
+                  </a>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <Rss className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-500 text-lg">Aucun article disponible pour le moment</p>
+          <p className="text-gray-400 text-sm mt-2">Les dernières actualités country seront bientôt disponibles</p>
+        </div>
+      )}
+    </div>
+  );
+};
