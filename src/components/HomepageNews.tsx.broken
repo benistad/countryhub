@@ -44,63 +44,132 @@ export const HomepageNews: React.FC<HomepageNewsProps> = ({ onViewAllClick }) =>
     return 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop&crop=center';
   };
 
-  // Transformer les données Supabase en format NewsItem avec déduplication
-  useEffect(() => {
-    if (supabaseNews && supabaseNews.length > 0) {
-      console.log(`📰 [Homepage] Transformation de ${supabaseNews.length} articles Supabase...`);
+  // Fonction pour récupérer les actualités via GNews API
+  const fetchNews = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      console.log('📡 [Homepage] Récupération des actualités country via GNews API...');
       
-      // Déduplication par titre ET par URL pour éviter les doublons
-      const uniqueArticles = supabaseNews.filter((article, index, array) => {
-        const isDuplicate = array.findIndex(a => 
-          a.title === article.title || a.link === article.link
-        ) !== index;
-        
-        if (isDuplicate) {
-          console.log(`🔄 [Homepage] Doublon détecté et supprimé: ${article.title}`);
-        }
-        
-        return !isDuplicate;
+      const params = new URLSearchParams({
+        q: 'country music',
+        lang: 'en',
+        country: 'us',
+        max: '6', // Seulement 6 articles pour la homepage
+        apikey: GNEWS_API_KEY
       });
       
-      console.log(`🧹 [Homepage] Déduplication: ${supabaseNews.length} → ${uniqueArticles.length} articles uniques`);
+      const gnewsUrl = `${GNEWS_BASE_URL}?${params}`;
       
-      const transformedNews: NewsItem[] = uniqueArticles
-        .slice(0, 6) // Limiter à 6 articles pour la homepage après déduplication
-        .map((article: CountryNewsItem) => ({
-          title: article.title || '',
-          link: article.link || '',
-          description: article.description || '',
-          pubDate: article.pub_date || new Date().toISOString(),
-          source: 'Country Music News', // Source fixe car données depuis Supabase
-          guid: article.link || `article-${article.id}`,
-          imageUrl: article.image_url || generateFallbackImage(article.title || '')
-        }));
+      const response = await fetch(gnewsUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'CountryMusicHub/1.0'
+        }
+      });
       
-      console.log(`✅ [Homepage] ${transformedNews.length} articles transformés et dédupliqués`);
-      console.log(`🖼️ [Homepage] ${transformedNews.filter(a => a.imageUrl && !a.imageUrl.startsWith('data:')).length}/${transformedNews.length} articles avec vraies images`);
+      if (!response.ok) {
+        throw new Error(`GNews API HTTP ${response.status}: ${response.statusText}`);
+      }
       
-      setNews(transformedNews);
+      const data = await response.json();
+      
+      if (!data.articles || !Array.isArray(data.articles)) {
+        throw new Error('Format de réponse GNews invalide');
+      }
+      
+      // Transformer les articles GNews en format NewsItem
+      const newsItems: NewsItem[] = data.articles.map((article: any, index: number) => ({
+        title: article.title || '',
+        link: article.url || '',
+        description: article.description || '',
+        pubDate: article.publishedAt || new Date().toISOString(),
+        source: article.source?.name || 'GNews',
+        guid: article.url || `gnews-homepage-${index}`,
+        imageUrl: article.image || generateFallbackImage(article.title || '')
+      }));
+      
+      console.log(`📰 [Homepage] ${newsItems.length} articles country music récupérés`);
+      console.log(`🖼️ [Homepage] ${newsItems.filter(a => a.imageUrl).length}/${newsItems.length} articles avec images`);
+      
+      setNews(newsItems);
+      
+    } catch (err) {
+      console.error('❌ [Homepage] Erreur lors de la récupération des actualités:', err);
+      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+    } finally {
+      setLoading(false);
     }
-  }, [supabaseNews]);
+  };
 
-  if (loading && news.length === 0) {
+  // Charger les actualités au montage du composant
+  useEffect(() => {
+    fetchNews();
+  }, []);
+
+  // Fonction pour rafraîchir les actualités (appelée par le système d'auto-refresh)
+  const refreshNews = () => {
+    fetchNews();
+  };
+
+  // Exposer la fonction refresh pour l'auto-refresh
+  useEffect(() => {
+    (window as any).refreshHomepageNews = refreshNews;
+    return () => {
+      delete (window as any).refreshHomepageNews;
+    };
+  }, []);
+
+  if (loading) {
     return (
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-8 border border-blue-100">
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement des actualités...</p>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center">
+            <div className="bg-blue-500 p-3 rounded-xl mr-4">
+              <Rss className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-gray-800">Hot Stories</h3>
+              <p className="text-gray-600">Real-time updates from top sources</p>
+            </div>
+          </div>
+          <button
+            onClick={onViewAllClick}
+            className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 shadow-md hover:shadow-lg"
+          >
+            Read All News
+            <ArrowRight className="w-5 h-5 ml-2" />
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="bg-white rounded-2xl shadow-md p-6 animate-pulse">
+              <div className="h-4 bg-gray-200 rounded mb-3"></div>
+              <div className="h-3 bg-gray-200 rounded w-2/3 mb-3"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          ))}
         </div>
       </div>
     );
   }
 
-  if (supabaseError && news.length === 0) {
+  if (error) {
     return (
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-8 border border-blue-100">
         <div className="text-center py-12">
           <Rss className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <p className="text-gray-500 text-lg">Erreur lors du chargement des actualités</p>
-          <p className="text-gray-400 text-sm mt-2">{supabaseError}</p>
+          <p className="text-gray-400 text-sm mt-2">{error}</p>
+          <button
+            onClick={fetchNews}
+            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            Réessayer
+          </button>
         </div>
       </div>
     );

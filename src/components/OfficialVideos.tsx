@@ -5,30 +5,30 @@ import { useOfficialVideos, VideosData } from '../hooks/useOfficialVideos';
 export const OfficialVideos: React.FC = () => {
   const [videosData, setVideosData] = useState<VideosData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true); // État de chargement local
   const { getStoredVideosData, syncOfficialVideos, loading } = useOfficialVideos();
 
   const loadVideosData = async () => {
     try {
       setError(null);
+      setIsLoading(true);
+      
+      console.log('📥 Chargement des vidéos officielles...');
       
       const storedData = await getStoredVideosData();
       if (storedData) {
+        console.log(`✅ ${storedData.videos.length} vidéos chargées depuis Supabase`);
         setVideosData(storedData);
         return;
       }
 
-      // Si pas de données stockées, essayer de charger depuis le fichier public
-      try {
-        const response = await fetch('/videos.json');
-        if (response.ok) {
-          const data = await response.json();
-          setVideosData(data);
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des vidéos:', error);
-      }
+      // Si aucune donnée n'est disponible, afficher une erreur claire
+      throw new Error('Aucune vidéo officielle disponible. Les données n\'ont pas pu être récupérées depuis Supabase.');
     } catch (err) {
+      console.error('❌ Erreur lors du chargement des vidéos:', err);
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -53,10 +53,14 @@ export const OfficialVideos: React.FC = () => {
 
   const officialVideos = videosData?.videos || [];
 
-  if (loading) {
+  if (isLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-red-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg font-medium">Chargement des vidéos officielles...</p>
+          <p className="text-gray-500 text-sm mt-2">Récupération depuis Supabase</p>
+        </div>
       </div>
     );
   }

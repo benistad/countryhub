@@ -45,64 +45,13 @@ export const GoogleNewsRSS: React.FC<GoogleNewsRSSProps> = ({
   const [news, setNews] = useState<NewsItem[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fonction pour générer une image de fallback thématique intelligente
-  const generateFallbackImage = (title: string): string => {
-    // Créer une image SVG avec dégradé basé sur le titre
-    const colors = [
-      ['#FF6B35', '#F7931E'], // Orange-rouge
-      ['#4ECDC4', '#44A08D'], // Turquoise
-      ['#A8E6CF', '#7FCDCD'], // Vert menthe
-      ['#FFD93D', '#FF6B6B'], // Jaune-rouge
-      ['#6C5CE7', '#A29BFE'], // Violet
-      ['#FD79A8', '#FDCB6E'], // Rose-jaune
-    ];
-    
-    // Sélectionner une couleur basée sur le hash du titre
-    const hash = title.split('').reduce((a, b) => {
-      a = ((a << 5) - a) + b.charCodeAt(0);
-      return a & a;
-    }, 0);
-    const colorPair = colors[Math.abs(hash) % colors.length];
-    
-    // Créer le SVG
-    const svg = `
-      <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:${colorPair[0]};stop-opacity:1" />
-            <stop offset="100%" style="stop-color:${colorPair[1]};stop-opacity:1" />
-          </linearGradient>
-        </defs>
-        <circle cx="32" cy="32" r="32" fill="url(#grad)" />
-        <text x="32" y="38" font-family="Arial, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="white">♪</text>
-      </svg>
-    `;
-    
-    return `data:image/svg+xml;base64,${btoa(svg)}`;
-  };
-
-  // Transformer les données Supabase en format NewsItem avec déduplication
+  // Transformer les données Supabase en format NewsItem
   useEffect(() => {
     if (supabaseNews && supabaseNews.length > 0) {
       console.log(`📰 Transformation de ${supabaseNews.length} articles Supabase...`);
       
-      // Déduplication par titre ET par URL pour éviter les doublons
-      const uniqueArticles = supabaseNews.filter((article, index, array) => {
-        const isDuplicate = array.findIndex(a => 
-          a.title === article.title || a.link === article.link
-        ) !== index;
-        
-        if (isDuplicate) {
-          console.log(`🔄 Doublon détecté et supprimé: ${article.title}`);
-        }
-        
-        return !isDuplicate;
-      });
-      
-      console.log(`🧹 Déduplication: ${supabaseNews.length} → ${uniqueArticles.length} articles uniques`);
-      
-      const transformedNews: NewsItem[] = uniqueArticles
-        .slice(0, maxItems) // Limiter au nombre demandé après déduplication
+      const transformedNews: NewsItem[] = supabaseNews
+        .slice(0, maxItems) // Limiter au nombre demandé
         .map((article: CountryNewsItem) => ({
           title: article.title || '',
           link: article.link || '',
@@ -114,14 +63,64 @@ export const GoogleNewsRSS: React.FC<GoogleNewsRSSProps> = ({
           sourceUrl: article.link || ''
         }));
       
-      console.log(`✅ ${transformedNews.length} articles transformés et dédupliqués`);
+      console.log(`✅ ${transformedNews.length} articles transformés`);
       console.log(`🖼️ ${transformedNews.filter(a => a.imageUrl && !a.imageUrl.startsWith('data:')).length}/${transformedNews.length} articles avec vraies images`);
       
       setNews(transformedNews);
     }
   }, [supabaseNews, maxItems]);
 
-  // Fonction pour formater les dates
+  // Fonction pour générer une image de fallback thématique intelligente
+  const generateFallbackImage = (title: string): string => {
+    // Analyser le titre pour choisir une image appropriée
+    const titleLower = title.toLowerCase();
+    
+    // Images Unsplash spécifiques par thème country
+    const themeImages = {
+      // Artistes et concerts
+      concert: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop&crop=center&auto=format&q=80',
+      artist: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop&crop=center&auto=format&q=80',
+      guitar: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&h=400&fit=crop&crop=center&auto=format&q=80',
+      
+      // Événements et awards
+      awards: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=400&fit=crop&crop=center&auto=format&q=80',
+      festival: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400&h=400&fit=crop&crop=center&auto=format&q=80',
+      
+      // Nashville et country culture
+      nashville: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop&crop=center&auto=format&q=80',
+      country: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop&crop=center&auto=format&q=80',
+      
+      // Default
+      default: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop&crop=center&auto=format&q=80'
+    };
+    
+    // Déterminer le thème basé sur le titre
+    if (titleLower.includes('concert') || titleLower.includes('tour') || titleLower.includes('show')) {
+      return themeImages.concert;
+    } else if (titleLower.includes('award') || titleLower.includes('nomination') || titleLower.includes('cma') || titleLower.includes('grammy')) {
+      return themeImages.awards;
+    } else if (titleLower.includes('festival') || titleLower.includes('fest')) {
+      return themeImages.festival;
+    } else if (titleLower.includes('guitar') || titleLower.includes('music')) {
+      return themeImages.guitar;
+    } else if (titleLower.includes('nashville')) {
+      return themeImages.nashville;
+    } else {
+      return themeImages.country;
+    }
+  };
+
+  useEffect(() => {
+    // Charger immédiatement au montage
+    fetchNews();
+    
+    // Actualiser automatiquement toutes les 30 minutes (1800000 ms)
+    const newsRefreshInterval = setInterval(() => {
+      console.log('🔄 Actualisation automatique des news GoogleNewsRSS (30 min)...');
+      fetchNews();
+    }, 30 * 60 * 1000);
+
+    // Fonction pour formater les dates
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -148,12 +147,18 @@ export const GoogleNewsRSS: React.FC<GoogleNewsRSSProps> = ({
     }
   };
 
+  // Nettoyer l'intervalle au démontage
+  return () => {
+    clearInterval(newsRefreshInterval);
+  };
+}, []);
+
   if (loading && news.length === 0) {
     return (
       <div className={`max-w-6xl mx-auto p-6 ${className}`}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement des actualités...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement des actualités country...</p>
         </div>
       </div>
     );
@@ -168,11 +173,9 @@ export const GoogleNewsRSS: React.FC<GoogleNewsRSSProps> = ({
             <p className="text-red-600 mb-4">❌ {supabaseError}</p>
             <button
               onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors flex items-center space-x-2 disabled:opacity-50 mx-auto"
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
             >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span>{isRefreshing ? 'Synchronisation...' : 'Réessayer'}</span>
+              Réessayer
             </button>
           </div>
         </div>
@@ -181,24 +184,32 @@ export const GoogleNewsRSS: React.FC<GoogleNewsRSSProps> = ({
   }
 
   return (
-    <div className={`max-w-6xl mx-auto p-6 ${className}`}>
-      {/* Header */}
-      <header className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{title}</h1>
-            <p className="text-gray-600">{description}</p>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Rss className="w-8 h-8 text-orange-500" />
-          </div>
+    <div className={`max-w-6xl mx-auto p-6 ${className}`} itemScope itemType="https://schema.org/NewsMediaOrganization">
+      {/* En-tête */}
+      <header className="text-center mb-8">
+        <div className="flex items-center justify-center mb-4">
+          <Rss className="w-10 h-10 text-orange-600 mr-3" />
+          <h1 className="text-4xl font-bold text-gray-800" itemProp="name">{title}</h1>
         </div>
-        
-        {showLastUpdated && lastUpdate && (
-          <p className="text-sm text-gray-500 mb-4">
-            Dernière mise à jour: {formatDate(lastUpdate)}
-          </p>
-        )}
+        <p className="text-xl text-gray-600 mb-4" itemProp="description">
+          {description}
+        </p>
+        <div className="flex items-center justify-center space-x-4 text-sm text-gray-500">
+          <div className="flex items-center">
+            <Clock className="w-4 h-4 mr-1" />
+            <span>
+              {lastUpdate ? `Mis à jour: ${formatDate(lastUpdate.toISOString())}` : 'Chargement...'}
+            </span>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors flex items-center space-x-2 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Synchronisation...' : 'Réessayer'}</span>
+          </button>
+        </div>
       </header>
 
       {/* Liste des actualités */}
@@ -217,7 +228,7 @@ export const GoogleNewsRSS: React.FC<GoogleNewsRSSProps> = ({
                   <img
                     src={article.imageUrl}
                     alt={article.title}
-                    className="w-32 h-32 rounded-full object-cover border-2 border-gray-100"
+                    className="w-16 h-16 rounded-full object-cover border-2 border-gray-100"
                     onError={(e) => {
                       // Fallback vers l'icône RSS si l'image ne charge pas
                       const target = e.target as HTMLImageElement;
@@ -228,9 +239,9 @@ export const GoogleNewsRSS: React.FC<GoogleNewsRSSProps> = ({
                   />
                 ) : null}
                 <div 
-                  className={`w-32 h-32 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center ${article.imageUrl ? 'hidden' : 'flex'}`}
+                  className={`w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center ${article.imageUrl ? 'hidden' : 'flex'}`}
                 >
-                  <Rss className="w-16 h-16 text-white" />
+                  <Rss className="w-8 h-8 text-white" />
                 </div>
               </div>
               

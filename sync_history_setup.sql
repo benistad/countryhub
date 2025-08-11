@@ -58,6 +58,10 @@ CREATE TRIGGER trigger_update_sync_history_updated_at
 -- RLS (Row Level Security)
 ALTER TABLE sync_history ENABLE ROW LEVEL SECURITY;
 
+-- Supprimer les politiques existantes si elles existent
+DROP POLICY IF EXISTS "Allow read access to sync_history" ON sync_history;
+DROP POLICY IF EXISTS "Allow insert/update via service role" ON sync_history;
+
 -- Politique pour permettre la lecture à tous les utilisateurs authentifiés
 CREATE POLICY "Allow read access to sync_history" ON sync_history
   FOR SELECT USING (true);
