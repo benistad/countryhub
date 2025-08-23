@@ -4,13 +4,15 @@ import { YouTubeChannelsManager } from './YouTubeChannelsManager';
 import { useTop30 } from '../hooks/useTop30';
 import { useOfficialVideos } from '../hooks/useOfficialVideos';
 import { useSyncHistory, SyncHistoryEntry } from '../hooks/useSyncHistory';
+import { useCountryNews } from '../hooks/useCountryNews';
 
 const AdminPanel: React.FC = () => {
   const [activeSection, setActiveSection] = useState<'dashboard' | 'sync-history' | 'youtube-channels'>('dashboard');
-  const [syncing, setSyncing] = useState({ top30: false, officialVideos: false });
+  const [syncing, setSyncing] = useState({ top30: false, news: false, officialVideos: false });
   
   const { syncFromApify, getStats: getTop30Stats } = useTop30();
   const { syncOfficialVideos } = useOfficialVideos();
+  const { syncNews } = useCountryNews();
   const { 
     history, 
     loading: historyLoading, 
@@ -52,6 +54,35 @@ const AdminPanel: React.FC = () => {
       }
     } catch {
       return 'Date invalide';
+    }
+  };
+
+  const handleNewsSync = async () => {
+    setSyncing(prev => ({ ...prev, news: true }));
+
+    // Créer une entrée d'historique
+    const syncId = await createSyncEntry('news', 'manual', {
+      triggered_by: 'admin_panel'
+    });
+
+    try {
+      const result = await syncNews();
+      if (syncId) {
+        await updateSyncEntry(syncId, {
+          status: result.success ? 'success' : 'error',
+          successMessage: result.success ? result.message : undefined,
+          errorMessage: !result.success ? result.message : undefined
+        });
+      }
+    } catch (error: any) {
+      if (syncId) {
+        await updateSyncEntry(syncId, {
+          status: 'error',
+          errorMessage: error.message || 'Erreur inconnue'
+        });
+      }
+    } finally {
+      setSyncing(prev => ({ ...prev, news: false }));
     }
   };
 
@@ -360,10 +391,10 @@ const AdminPanel: React.FC = () => {
                 'News',
                 <Music className="w-5 h-5 text-purple-500 mr-2" />,
                 newsSyncStats,
-                () => {},
-                false,
-                'Synchronisation automatique',
-                'bg-gray-300'
+                handleNewsSync,
+                syncing.news,
+                'Synchroniser',
+                'bg-purple-600'
               )}
 
               {renderSyncCard(
