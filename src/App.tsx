@@ -63,13 +63,13 @@ function App() {
         noindex: false
       },
       videos: {
-        title: 'Vidéos Country Officielles - CountryMusic-Hub.com',
-        description: 'Découvrez les dernières vidéos officielles des artistes country. Collection mise à jour automatiquement depuis YouTube.',
+        title: 'Official Country Videos - CountryMusic-Hub.com',
+        description: 'Discover the latest official country music videos. Collection automatically updated from YouTube.',
         canonical: '/videos',
-        keywords: 'vidéos country, vidéos officielles, YouTube country, clips country, musique country',
+        keywords: 'country videos, official videos, YouTube country, country clips, country music',
         breadcrumbs: [
           { name: 'Home', url: '/' },
-          { name: 'Vidéos', url: '/videos' }
+          { name: 'Videos', url: '/videos' }
         ],
         noindex: false
       },
@@ -266,8 +266,8 @@ function App() {
         return (
           <div className="space-y-6">
             <SEOHead 
-              title="Vidéos Country Officielles - CountryMusic-Hub.com"
-              description="Découvrez les dernières vidéos officielles des artistes country. Collection mise à jour automatiquement depuis YouTube."
+              title="Official Country Videos - CountryMusic-Hub.com"
+              description="Discover the latest official country music videos. Collection automatically updated from YouTube."
               canonical="/videos"
             />
             <VideosCountry />
@@ -455,7 +455,7 @@ function App() {
     home: 'Home',
     top30: 'Top 30 Chart',
     'country-news': 'Country News',
-    videos: 'Vidéos Country',
+    videos: 'Country Videos',
     admin: 'Administration'
   };
   const currentPageName = pageNames[activeTab as keyof typeof pageNames] || 'Home';
@@ -512,10 +512,10 @@ function App() {
                     ? 'bg-red-100 text-red-700'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
-                aria-label="Vidéos Country"
+                aria-label="Country Videos"
               >
                 <Video className="w-4 h-4 inline mr-1" />
-                Vidéos
+                Videos
               </button>
               <button
                 onClick={() => handleTabClick('country-news')}
@@ -578,7 +578,7 @@ function App() {
             <div>
               <h4 className="text-lg font-semibold mb-4">Sections</h4>
               <ul className="space-y-2 text-gray-300">
-                <li><a href="#" onClick={() => handleTabClick('videos')} className="hover:text-white">Vidéos</a></li>
+                <li><a href="#" onClick={() => handleTabClick('videos')} className="hover:text-white">Videos</a></li>
                 <li><a href="#" onClick={() => handleTabClick('top30')} className="hover:text-white">Top 30</a></li>
                 <li><a href="#" onClick={() => handleTabClick('country-news')} className="hover:text-white">News</a></li>
               </ul>

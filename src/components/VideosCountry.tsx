@@ -28,13 +28,13 @@ export default function VideosCountry() {
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
     
     if (diffInHours < 24) {
-      return `Il y a ${diffInHours}h`;
+      return `${diffInHours}h ago`;
     } else if (diffInHours < 168) {
       const days = Math.floor(diffInHours / 24);
-      return `Il y a ${days}j`;
+      return `${days}d ago`;
     } else {
       const weeks = Math.floor(diffInHours / 168);
-      return `Il y a ${weeks}sem`;
+      return `${weeks}w ago`;
     }
   };
 
@@ -44,7 +44,7 @@ export default function VideosCountry() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Chargement des vidéos...</p>
+            <p className="mt-4 text-gray-600">Loading videos...</p>
           </div>
         </div>
       </div>
@@ -57,7 +57,7 @@ export default function VideosCountry() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center py-12">
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              <p className="font-bold">Erreur</p>
+              <p className="font-bold">Error</p>
               <p>{error}</p>
             </div>
           </div>
@@ -72,11 +72,11 @@ export default function VideosCountry() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Vidéos Country Officielles
+            Official Country Videos
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Découvrez les dernières vidéos officielles des artistes country, 
-            synchronisées automatiquement depuis YouTube.
+            Discover the latest official country music videos, 
+            automatically synchronized from YouTube.
           </p>
         </div>
 
@@ -86,18 +86,18 @@ export default function VideosCountry() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold text-amber-600">{videos.length}</div>
-                <div className="text-sm text-gray-600">Vidéos</div>
+                <div className="text-sm text-gray-600">Videos</div>
               </div>
               <div>
                 <div className="text-2xl font-bold text-amber-600">{syncMetadata.total_channels}</div>
-                <div className="text-sm text-gray-600">Chaînes</div>
+                <div className="text-sm text-gray-600">Channels</div>
               </div>
               <div>
                 <div className="text-2xl font-bold text-amber-600">{artists.length}</div>
-                <div className="text-sm text-gray-600">Artistes</div>
+                <div className="text-sm text-gray-600">Artists</div>
               </div>
               <div>
-                <div className="text-sm text-gray-600">Dernière sync</div>
+                <div className="text-sm text-gray-600">Last sync</div>
                 <div className="text-sm font-medium">{formatRelativeTime(syncMetadata.last_sync_at)}</div>
               </div>
             </div>
@@ -111,7 +111,7 @@ export default function VideosCountry() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <input
                 type="text"
-                placeholder="Rechercher par titre ou artiste..."
+                placeholder="Search by title or artist..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
@@ -124,7 +124,7 @@ export default function VideosCountry() {
                 onChange={(e) => setSelectedArtist(e.target.value)}
                 className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
               >
-                <option value="">Tous les artistes</option>
+                <option value="">All artists</option>
                 {artists.map(artist => (
                   <option key={artist} value={artist}>{artist}</option>
                 ))}
@@ -134,9 +134,9 @@ export default function VideosCountry() {
           
           {(searchTerm || selectedArtist) && (
             <div className="mt-4 text-sm text-gray-600">
-              {filteredVideos.length} vidéo{filteredVideos.length !== 1 ? 's' : ''} trouvée{filteredVideos.length !== 1 ? 's' : ''}
-              {searchTerm && ` pour "${searchTerm}"`}
-              {selectedArtist && ` par ${selectedArtist}`}
+              {filteredVideos.length} video{filteredVideos.length !== 1 ? 's' : ''} found
+              {searchTerm && ` for "${searchTerm}"`}
+              {selectedArtist && ` by ${selectedArtist}`}
             </div>
           )}
         </div>
@@ -145,11 +145,11 @@ export default function VideosCountry() {
         {filteredVideos.length === 0 ? (
           <div className="text-center py-12">
             <Play className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune vidéo trouvée</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No videos found</h3>
             <p className="text-gray-600">
               {searchTerm || selectedArtist 
-                ? "Essayez de modifier vos critères de recherche."
-                : "Les vidéos apparaîtront ici après la première synchronisation."
+                ? "Try modifying your search criteria."
+                : "Videos will appear here after the first synchronization."
               }
             </p>
           </div>
@@ -171,7 +171,7 @@ interface VideoCardProps {
 
 function VideoCard({ video }: VideoCardProps) {
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
+    return new Date(dateString).toLocaleDateString('en-US', {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
@@ -226,7 +226,7 @@ function VideoCard({ video }: VideoCardProps) {
           className="inline-flex items-center justify-center w-full px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors duration-200"
         >
           <ExternalLink className="h-4 w-4 mr-2" />
-          Voir sur YouTube
+          Watch on YouTube
         </a>
       </div>
     </div>

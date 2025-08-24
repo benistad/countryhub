@@ -14,7 +14,7 @@ export function HomepageVideos() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Chargement des vidéos...</p>
+            <p className="mt-4 text-gray-600">Loading videos...</p>
           </div>
         </div>
       </section>
@@ -36,10 +36,10 @@ export function HomepageVideos() {
             </div>
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-4" itemProp="name">
-            Dernières Vidéos Country
+            Latest Country Videos
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto" itemProp="description">
-            Découvrez les dernières vidéos officielles des artistes country, mises à jour automatiquement.
+            Discover the latest official country music videos, automatically updated.
           </p>
         </div>
 
@@ -62,7 +62,7 @@ export function HomepageVideos() {
             }}
             className="inline-flex items-center px-6 py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors duration-200"
           >
-            Voir toutes les vidéos
+            View All Videos
             <ArrowRight className="ml-2 h-5 w-5" />
           </a>
         </div>
@@ -82,13 +82,13 @@ function VideoCard({ video }: VideoCardProps) {
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
     
     if (diffInHours < 24) {
-      return `Il y a ${diffInHours}h`;
+      return `${diffInHours}h ago`;
     } else if (diffInHours < 168) {
       const days = Math.floor(diffInHours / 24);
-      return `Il y a ${days}j`;
+      return `${days}d ago`;
     } else {
       const weeks = Math.floor(diffInHours / 168);
-      return `Il y a ${weeks}sem`;
+      return `${weeks}w ago`;
     }
   };
 
@@ -142,7 +142,7 @@ function VideoCard({ video }: VideoCardProps) {
           itemProp="url"
         >
           <Play className="h-4 w-4 mr-2" />
-          Regarder sur YouTube
+          Watch on YouTube
         </a>
       </div>
     </div>
