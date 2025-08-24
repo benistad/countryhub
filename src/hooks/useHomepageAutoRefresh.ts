@@ -1,7 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useTop30 } from './useTop30';
 import { useCountryNews } from './useCountryNews';
-import { useSupabaseOfficialVideos } from './useSupabaseOfficialVideos';
 
 /**
  * Hook personnalisé pour l'actualisation automatique de la homepage
@@ -15,12 +14,10 @@ import { useSupabaseOfficialVideos } from './useSupabaseOfficialVideos';
 export function useHomepageAutoRefresh() {
   const { refetch: refetchTop30, lastUpdate: top30LastUpdate } = useTop30();
   const { refetch: refetchNews, lastUpdate: newsLastUpdate } = useCountryNews();
-  const { getVideosFromSupabase } = useSupabaseOfficialVideos();
   
   // Références pour stocker les derniers timestamps connus
   const lastKnownTop30Update = useRef<string | null>(null);
   const lastKnownNewsUpdate = useRef<string | null>(null);
-  const lastKnownVideosUpdate = useRef<string | null>(null);
   
   // Callbacks pour notifier les changements
   const onDataUpdated = useRef<{
@@ -66,20 +63,7 @@ export function useHomepageAutoRefresh() {
   /**
    * Vérifie s'il y a de nouvelles vidéos officielles
    */
-  const checkVideosUpdates = useCallback(async () => {
-    try {
-      const videosData = await getVideosFromSupabase();
-      if (videosData && videosData.lastSyncAt !== lastKnownVideosUpdate.current) {
-        console.log('🎬 Nouvelles vidéos officielles détectées');
-        lastKnownVideosUpdate.current = videosData.lastSyncAt;
-        onDataUpdated.current.onVideosUpdated?.();
-        return true;
-      }
-    } catch (error) {
-      console.error('Erreur lors de la vérification des vidéos:', error);
-    }
-    return false;
-  }, [getVideosFromSupabase]);
+  // Les vidéos officielles ont été retirées du projet
 
   /**
    * Vérifie toutes les sources de données pour des mises à jour
@@ -87,8 +71,7 @@ export function useHomepageAutoRefresh() {
   const checkAllUpdates = useCallback(async () => {
     const updates = await Promise.all([
       checkTop30Updates(),
-      checkNewsUpdates(),
-      checkVideosUpdates()
+      checkNewsUpdates()
     ]);
     
     const hasUpdates = updates.some(Boolean);
@@ -97,7 +80,7 @@ export function useHomepageAutoRefresh() {
     }
     
     return hasUpdates;
-  }, [checkTop30Updates, checkNewsUpdates, checkVideosUpdates]);
+  }, [checkTop30Updates, checkNewsUpdates]);
 
   /**
    * Force le rafraîchissement de toutes les données
@@ -172,7 +155,6 @@ export function useHomepageAutoRefresh() {
     forceRefreshAll,
     setUpdateCallbacks,
     checkTop30Updates,
-    checkNewsUpdates,
-    checkVideosUpdates
+    checkNewsUpdates
   };
 }

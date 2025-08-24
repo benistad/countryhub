@@ -43,6 +43,7 @@ Thumbs.db
 
 # Supabase
 .supabase/
+supabase/.env.edge
 
 # Temporary files
 *.tmp

@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 
 export interface SyncHistoryEntry {
   id: string;
-  sync_type: 'top30' | 'news' | 'official-videos';
+  sync_type: 'top30' | 'news' | 'official-videos' | 'country_videos';
   sync_trigger: 'manual' | 'automatic' | 'cron';
   started_at: string;
   completed_at: string | null;
@@ -59,7 +59,7 @@ export const useSyncHistory = () => {
   };
 
   // Obtenir les statistiques pour un type de sync donné
-  const getSyncStats = (syncType: 'top30' | 'news' | 'official-videos'): SyncStats => {
+  const getSyncStats = (syncType: 'top30' | 'news' | 'official-videos' | 'country_videos'): SyncStats => {
     const typeHistory = history.filter(h => h.sync_type === syncType);
     const lastEntry = typeHistory[0]; // Le plus récent
 
@@ -73,7 +73,7 @@ export const useSyncHistory = () => {
 
   // Créer une nouvelle entrée d'historique
   const createSyncEntry = async (
-    syncType: 'top30' | 'news' | 'official-videos',
+    syncType: 'top30' | 'news' | 'official-videos' | 'country_videos',
     syncTrigger: 'manual' | 'automatic' | 'cron',
     metadata: any = {}
   ): Promise<string | null> => {

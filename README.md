@@ -6,7 +6,6 @@ A modern, fully automated SEO-optimized web application for country music fans w
 
 CountryMusic-Hub.com is a comprehensive country music platform that automatically aggregates and displays:
 - **Latest country music news** (via RSS feeds)
-- **Official music videos** (via YouTube API)
 - **AI-powered country music charts** (via web scraping + GPT analysis)
 
 The entire system is designed to run autonomously with minimal human intervention.
@@ -16,7 +15,6 @@ The entire system is designed to run autonomously with minimal human interventio
 ```
 Frontend (React/TypeScript)
 ├── News Section (RSS Widget)
-├── Videos Section (YouTube Integration)
 ├── Chart Section (AI-Powered Rankings)
 └── Admin Panel (Management Interface)
 
@@ -27,7 +25,6 @@ Backend (Supabase)
 └── Real-time subscriptions
 
 External Integrations
-├── YouTube Data API v3
 ├── OpenAI GPT-4 API
 ├── RSS.app Widget
 └── PopVortex Web Scraping
@@ -61,13 +58,6 @@ Automation Layer
 - Saves structured data to `country_chart` table
 - **Frequency**: 2x/week (Monday & Thursday at 9h EST)
 
-### 2. Intelligent Video Curation
-**Function**: `sync-youtube-videos`
-- Fetches videos from configured YouTube channels
-- Filters for "official" content only
-- Extracts metadata (title, thumbnail, duration)
-- **Frequency**: 1x/day (9h EST)
-
 ### 3. Real-time News Aggregation
 **Method**: RSS.app widget integration
 - Displays live RSS feeds from country music sources
@@ -77,12 +67,6 @@ Automation Layer
 ## 🔧 Edge Functions Explained
 
 ### Core Sync Functions
-1. **`sync-youtube-videos`**
-   - Fetches latest videos from YouTube channels
-   - Filters for "official" content since August 2025
-   - Handles API quotas and rate limiting
-   - Returns detailed sync statistics
-
 2. **`scrape-popvortex-chart`**
    - Downloads PopVortex HTML content
    - Uses OpenAI GPT-4 to parse chart data
@@ -96,12 +80,6 @@ Automation Layer
    - Prevents duplicate articles
 
 ### Automation Functions
-4. **`auto-sync-videos`**
-   - Wrapper for automated video synchronization
-   - Includes scheduling logic and day validation
-   - Comprehensive error handling and logging
-   - Triggered by external cron services
-
 5. **`auto-sync-chart`**
    - Wrapper for automated chart synchronization
    - Only runs on Monday and Thursday
@@ -126,29 +104,7 @@ Automation Layer
    - Handles various RSS formats
    - User-agent spoofing for blocked feeds
 
-9. **`get-youtube-channel-info`**
-   - YouTube channel metadata extraction
-   - Supports multiple URL formats (@username, /channel/, /c/)
-   - API key validation and quota management
-
 ## 🎵 Content Management System
-
-### YouTube Channel Management
-- **Admin Interface**: Add/edit/delete YouTube channels
-- **Bulk Import**: Process multiple YouTube URLs at once
-- **Auto-Detection**: Automatically extract channel info from URLs
-- **Validation**: Verify channel existence and accessibility
-
-### Video Filtering Logic
-```typescript
-// Only videos with "official" in title are imported
-const isRelevant = title.toLowerCase().includes('official');
-
-// Additional filters:
-- Published after August 1, 2025
-- Maximum 20 videos per channel per sync
-- Automatic duplicate detection by youtube_id
-```
 
 ### Chart Generation Algorithm
 ```typescript
@@ -171,19 +127,6 @@ const isRelevant = title.toLowerCase().includes('official');
 - **Zapier/IFTTT** (Integration): Connect with other services
 All Edge Functions are accessible via HTTP POST to their webhook URLs.
 
-### GitHub Actions Workflow (External Cron)
-- Configure repository secrets in GitHub:
-  - `SUPABASE_FUNCTION_URL_SYNC_OFFICIAL_VIDEOS`: `https://<your-project-ref>.supabase.co/functions/v1/sync-official-videos`
-  - `SUPABASE_SERVICE_ROLE_KEY`: Supabase Service Role key
-- Workflow file: `.github/workflows/sync-official-videos.yml`
-- Schedule: daily at 04:00 UTC (cron) + manual runs via the Actions tab
-- Request details: `Authorization: Bearer <service_role>` with JSON body `{ "trigger": "github_actions", "source": "gha", "schedule": "daily_04_00_utc" }`
-
-To test now:
-1. Push changes to GitHub.
-2. Open GitHub → Actions → "Sync Official Videos (Daily)" → Run workflow.
-3. Verify logs and data in `official_videos` and `official_videos_sync_metadata` tables on Supabase.
-
 ## 🔐 Security & Environment
 
 ### Required Environment Variables
@@ -198,7 +141,6 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 SUPABASE_ANON_KEY=your_anon_key
 
 # External APIs
-YOUTUBE_API_KEY=your_youtube_api_key
 OPENAI_API_KEY=your_openai_api_key
 ```
 
@@ -217,16 +159,13 @@ src/
 │   ├── AdminPanel.tsx           # Main admin interface
 │   ├── CountryChart.tsx         # Chart display with rankings
 │   ├── CountryNews.tsx          # RSS news widget
-│   ├── VideosPage.tsx           # Video gallery with search
-│   ├── YouTubeChannelsManager.tsx # Channel management
 │   ├── NewsPreview.tsx          # News preview cards
 │   ├── LoadingSpinner.tsx       # Loading states
 │   └── SEOHead.tsx              # Dynamic SEO meta tags
 ├── hooks/
 │   ├── useCountryChart.ts       # Chart data management
 │   ├── useCountryNews.ts        # News data management
-│   ├── useVideos.ts             # Video data management
-│   └── useYouTubeChannels.ts    # Channel management
+│   └── (Videos & YouTube channels removed)
 ├── lib/
 │   └── supabase.ts              # Supabase client & types
 └── App.tsx                      # Main application router
@@ -372,7 +311,6 @@ OPENAI_API_KEY=your_key_here
 - **Monthly**: Review API usage and costs
 - **Weekly**: Check automation health
 - **Daily**: Monitor error logs
-- **As Needed**: Update YouTube channels list
 
 ### Emergency Procedures
 1. **API Quota Exceeded**: Switch to backup keys
@@ -401,7 +339,6 @@ OPENAI_API_KEY=your_key_here
 This is a **fully automated country music web application** that:
 
 1. **Scrapes and analyzes** country music charts using AI
-2. **Automatically imports** official music videos from YouTube
 3. **Aggregates news** from RSS feeds in real-time
 4. **Runs autonomously** with scheduled synchronization
 5. **Provides admin tools** for manual management

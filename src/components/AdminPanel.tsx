@@ -2,17 +2,17 @@ import React, { useState } from 'react';
 import { Youtube, Trophy, RefreshCw, BarChart3, Music, Video, Clock, CheckCircle, XCircle, AlertCircle, Info } from 'lucide-react';
 import { YouTubeChannelsManager } from './YouTubeChannelsManager';
 import { useTop30 } from '../hooks/useTop30';
-import { useOfficialVideos } from '../hooks/useOfficialVideos';
 import { useSyncHistory, SyncHistoryEntry } from '../hooks/useSyncHistory';
 import { useCountryNews } from '../hooks/useCountryNews';
+import { useCountryVideos } from '../hooks/useCountryVideos';
 
 const AdminPanel: React.FC = () => {
   const [activeSection, setActiveSection] = useState<'dashboard' | 'sync-history' | 'youtube-channels'>('dashboard');
-  const [syncing, setSyncing] = useState({ top30: false, news: false, officialVideos: false });
+  const [syncing, setSyncing] = useState({ top30: false, news: false, countryVideos: false });
   
   const { syncFromApify, getStats: getTop30Stats } = useTop30();
-  const { syncOfficialVideos } = useOfficialVideos();
   const { syncNews } = useCountryNews();
+  const { syncVideos: syncCountryVideos, videos } = useCountryVideos();
   const { 
     history, 
     loading: historyLoading, 
@@ -27,7 +27,7 @@ const AdminPanel: React.FC = () => {
   // Obtenir les statistiques pour chaque type de sync
   const top30SyncStats = getSyncStats('top30');
   const newsSyncStats = getSyncStats('news');
-  const officialVideosSyncStats = getSyncStats('official-videos');
+  const countryVideosSyncStats = getSyncStats('country_videos');
 
   const formatLastUpdate = (dateString: string): string => {
     try {
@@ -117,22 +117,21 @@ const AdminPanel: React.FC = () => {
     }
   };
 
-  const handleOfficialVideosSync = async () => {
-    setSyncing(prev => ({ ...prev, officialVideos: true }));
-    
+  const handleCountryVideosSync = async () => {
+    setSyncing(prev => ({ ...prev, countryVideos: true }));
+
     // Créer une entrée d'historique
-    const syncId = await createSyncEntry('official-videos', 'manual', {
+    const syncId = await createSyncEntry('country_videos', 'manual', {
       triggered_by: 'admin_panel'
     });
-    
+
     try {
-      const result = await syncOfficialVideos();
-      
+      await syncCountryVideos();
       if (syncId) {
         await updateSyncEntry(syncId, {
-          status: result.success ? 'success' : 'error',
-          successMessage: result.success ? result.message : undefined,
-          errorMessage: !result.success ? result.message : undefined
+          status: 'success',
+          itemsProcessed: videos.length || 0,
+          successMessage: `${videos.length} vidéos synchronisées`
         });
       }
     } catch (error: any) {
@@ -143,7 +142,7 @@ const AdminPanel: React.FC = () => {
         });
       }
     } finally {
-      setSyncing(prev => ({ ...prev, officialVideos: false }));
+      setSyncing(prev => ({ ...prev, countryVideos: false }));
     }
   };
 
@@ -152,6 +151,7 @@ const AdminPanel: React.FC = () => {
       case 'top30': return <Trophy className="w-4 h-4" />;
       case 'news': return <Music className="w-4 h-4" />;
       case 'official-videos': return <Video className="w-4 h-4" />;
+      case 'country_videos': return <Video className="w-4 h-4" />;
       default: return <BarChart3 className="w-4 h-4" />;
     }
   };
@@ -171,6 +171,7 @@ const AdminPanel: React.FC = () => {
       case 'top30': return 'Top 30';
       case 'news': return 'News';
       case 'official-videos': return 'Vidéos Officielles';
+      case 'country_videos': return 'Vidéos Country';
       default: return type;
     }
   };
@@ -398,11 +399,11 @@ const AdminPanel: React.FC = () => {
               )}
 
               {renderSyncCard(
-                'Vidéos Officielles',
+                'Vidéos Country',
                 <Video className="w-5 h-5 text-red-500 mr-2" />,
-                officialVideosSyncStats,
-                handleOfficialVideosSync,
-                syncing.officialVideos,
+                countryVideosSyncStats,
+                handleCountryVideosSync,
+                syncing.countryVideos,
                 'Synchroniser',
                 'bg-red-600'
               )}

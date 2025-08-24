@@ -160,6 +160,28 @@ Deno.serve(async (req: Request) => {
       console.log(`🧹 Nettoyage des anciens articles effectué`);
     }
 
+    // ÉTAPE 5: Enregistrer dans sync_history
+    debugInfo.step = "Enregistrement historique";
+    debugInfo.details = "Mise à jour de sync_history";
+    
+    try {
+      await supabase
+        .from('sync_history')
+        .upsert({
+          sync_type: 'gnews_country',
+          last_sync_at: new Date().toISOString(),
+          sync_count: 1,
+          status: 'success',
+          details: `${importedCount} nouveaux articles importés via GNews API`
+        }, {
+          onConflict: 'sync_type'
+        });
+      
+      console.log(`📊 Historique de synchronisation mis à jour`);
+    } catch (historyError) {
+      console.warn(`⚠️ Erreur mise à jour historique: ${historyError.message}`);
+    }
+
     debugInfo.success = true;
     debugInfo.details = `Import terminé: ${importedCount}/${debugInfo.articlesFound} articles importés`;
 
