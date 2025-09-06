@@ -149,9 +149,11 @@ const AdminPanel: React.FC = () => {
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'top30': return <Trophy className="w-4 h-4" />;
+      case 'auto_top30': return <Trophy className="w-4 h-4" />;
       case 'news': return <Music className="w-4 h-4" />;
       case 'official-videos': return <Video className="w-4 h-4" />;
       case 'country_videos': return <Video className="w-4 h-4" />;
+      case 'auto_country_videos': return <Video className="w-4 h-4" />;
       default: return <BarChart3 className="w-4 h-4" />;
     }
   };
@@ -169,9 +171,11 @@ const AdminPanel: React.FC = () => {
   const getTypeLabel = (type: string) => {
     switch (type) {
       case 'top30': return 'Top 30';
+      case 'auto_top30': return 'Top 30 (Auto)';
       case 'news': return 'News';
       case 'official-videos': return 'Vidéos Officielles';
       case 'country_videos': return 'Vidéos Country';
+      case 'auto_country_videos': return 'Vidéos Country (Auto)';
       default: return type;
     }
   };
