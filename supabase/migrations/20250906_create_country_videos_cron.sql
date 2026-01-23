@@ -1,6 +1,7 @@
 -- Migration: Create Country Videos Sync Cron Job
--- Description: Configure pg_cron to automatically sync country videos daily at 6 AM EST
+-- Description: Configure pg_cron to automatically sync country videos every 6 hours
 -- Created: 2025-09-06
+-- Updated: 2025-01-23 - Simplified to call sync-country-videos directly (like gnews)
 
 -- Enable pg_cron extension if not already enabled
 CREATE EXTENSION IF NOT EXISTS pg_cron;
@@ -16,17 +17,17 @@ EXCEPTION
     NULL;
 END $$;
 
--- Create cron job to sync country videos daily at 6 AM EST
--- This will call our auto-sync-country-videos Edge Function
+-- Create cron job to sync country videos every 6 hours
+-- Appelle directement sync-country-videos (comme pour gnews-country-sync)
 SELECT cron.schedule(
   'country-videos-sync',                   -- Job name
-  '0 6 * * *',                            -- Daily at 6 AM (cron expression)
+  '0 */6 * * *',                          -- Every 6 hours (cron expression)
   $$
   SELECT
     net.http_post(
-      url := 'https://lkrintwlenbmtohilmrs.supabase.co/functions/v1/auto-sync-country-videos',
+      url := 'https://lkrintwlenbmtohilmrs.supabase.co/functions/v1/sync-country-videos',
       headers := '{"Content-Type": "application/json", "Authorization": "Bearer ' || current_setting('app.settings.service_role_key') || '"}'::jsonb,
-      body := '{"automated": true}'::jsonb
+      body := '{"trigger": "cron", "source": "pg_cron"}'::jsonb
     ) as request_id;
   $$
 );
@@ -43,11 +44,11 @@ AS $$
 DECLARE
   result jsonb;
 BEGIN
-  -- Call the Edge Function manually
+  -- Call the Edge Function manually (directly sync-country-videos)
   SELECT net.http_post(
-    url := 'https://lkrintwlenbmtohilmrs.supabase.co/functions/v1/auto-sync-country-videos',
+    url := 'https://lkrintwlenbmtohilmrs.supabase.co/functions/v1/sync-country-videos',
     headers := '{"Content-Type": "application/json", "Authorization": "Bearer ' || current_setting('app.settings.service_role_key') || '"}'::jsonb,
-    body := '{"automated": false}'::jsonb
+    body := '{"trigger": "manual", "source": "trigger_function"}'::jsonb
   ) INTO result;
   
   RETURN result;
@@ -58,7 +59,7 @@ $$;
 GRANT EXECUTE ON FUNCTION trigger_country_videos_sync() TO authenticated;
 
 -- Add comment for documentation
-COMMENT ON FUNCTION trigger_country_videos_sync() IS 'Manual trigger function to sync country videos. Can be called for testing or manual sync.';
+COMMENT ON FUNCTION trigger_country_videos_sync() IS 'Manual trigger function to sync country videos. Calls sync-country-videos directly.';
 
 -- Log the cron job creation (skip if table doesn't exist)
 DO $$
@@ -69,7 +70,7 @@ BEGIN
     created_at
   ) VALUES (
     'cron_job_created',
-    'Country videos sync cron job created - runs daily at 6 AM EST',
+    'Country videos sync cron job created - runs every 6 hours',
     NOW()
   ) ON CONFLICT DO NOTHING;
 EXCEPTION

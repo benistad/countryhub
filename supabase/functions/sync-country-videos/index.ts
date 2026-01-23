@@ -33,7 +33,16 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { trigger, source } = await req.json()
+    // Parse body safely (cron may send empty or malformed body)
+    let trigger = 'unknown'
+    let source = 'unknown'
+    try {
+      const body = await req.json()
+      trigger = body.trigger || 'unknown'
+      source = body.source || 'unknown'
+    } catch {
+      // Body parsing failed, use defaults
+    }
     const startTime = Date.now()
     
     console.log(`[sync-country-videos] Starting sync - trigger: ${trigger}, source: ${source}`)
