@@ -1,9 +1,11 @@
-import { } from 'react';
+import { useState } from 'react';
 import { Play, Calendar, User, ArrowRight, Video } from 'lucide-react';
 import { useCountryVideos, CountryVideo } from '../hooks/useCountryVideos';
+import { YouTubePlayerModal } from './YouTubePlayerModal';
 
 export function HomepageVideos() {
   const { videos, loading, error } = useCountryVideos();
+  const [selectedVideo, setSelectedVideo] = useState<CountryVideo | null>(null);
   
   // Prendre les 6 dernières vidéos
   const latestVideos = videos.slice(0, 6);
@@ -46,7 +48,11 @@ export function HomepageVideos() {
         {/* Videos Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {latestVideos.map((video) => (
-            <VideoCard key={video.id} video={video} />
+            <VideoCard 
+              key={video.id} 
+              video={video} 
+              onPlay={() => setSelectedVideo(video)}
+            />
           ))}
         </div>
 
@@ -67,15 +73,26 @@ export function HomepageVideos() {
           </a>
         </div>
       </div>
+
+      {/* YouTube Player Modal */}
+      {selectedVideo && (
+        <YouTubePlayerModal
+          videoId={selectedVideo.video_id}
+          title={selectedVideo.title}
+          isOpen={!!selectedVideo}
+          onClose={() => setSelectedVideo(null)}
+        />
+      )}
     </section>
   );
 }
 
 interface VideoCardProps {
   video: CountryVideo;
+  onPlay: () => void;
 }
 
-function VideoCard({ video }: VideoCardProps) {
+function VideoCard({ video, onPlay }: VideoCardProps) {
   const formatRelativeTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -111,11 +128,15 @@ function VideoCard({ video }: VideoCardProps) {
         )}
         
         {/* Play overlay */}
-        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center group">
+        <button
+          onClick={onPlay}
+          className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center group cursor-pointer"
+          aria-label={`Play ${video.title}`}
+        >
           <div className="bg-red-600 rounded-full p-3 opacity-0 group-hover:opacity-100 transform scale-75 group-hover:scale-100 transition-all duration-300">
             <Play className="h-6 w-6 text-white fill-current" />
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Content */}
@@ -134,16 +155,13 @@ function VideoCard({ video }: VideoCardProps) {
           <span itemProp="uploadDate">{formatRelativeTime(video.published_at)}</span>
         </div>
 
-        <a
-          href={video.url}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          onClick={onPlay}
           className="inline-flex items-center justify-center w-full px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors duration-200"
-          itemProp="url"
         >
           <Play className="h-4 w-4 mr-2" />
-          Watch on YouTube
-        </a>
+          Watch Video
+        </button>
       </div>
     </div>
   );

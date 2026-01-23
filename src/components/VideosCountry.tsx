@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Play, Calendar, User, ExternalLink, Search, Filter } from 'lucide-react';
 import { useCountryVideos, CountryVideo } from '../hooks/useCountryVideos';
+import { YouTubePlayerModal } from './YouTubePlayerModal';
 
 export default function VideosCountry() {
   const { videos, loading, error, syncMetadata } = useCountryVideos();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedArtist, setSelectedArtist] = useState('');
+  const [selectedVideo, setSelectedVideo] = useState<CountryVideo | null>(null);
 
   // Get unique artists for filter
   const artists = Array.from(new Set(videos.map(video => video.artist))).sort();
@@ -156,20 +158,35 @@ export default function VideosCountry() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredVideos.map((video) => (
-              <VideoCard key={video.id} video={video} />
+              <VideoCard 
+                key={video.id} 
+                video={video} 
+                onPlay={() => setSelectedVideo(video)}
+              />
             ))}
           </div>
         )}
       </div>
+
+      {/* YouTube Player Modal */}
+      {selectedVideo && (
+        <YouTubePlayerModal
+          videoId={selectedVideo.video_id}
+          title={selectedVideo.title}
+          isOpen={!!selectedVideo}
+          onClose={() => setSelectedVideo(null)}
+        />
+      )}
     </div>
   );
 }
 
 interface VideoCardProps {
   video: CountryVideo;
+  onPlay: () => void;
 }
 
-function VideoCard({ video }: VideoCardProps) {
+function VideoCard({ video, onPlay }: VideoCardProps) {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       day: 'numeric',
@@ -196,11 +213,15 @@ function VideoCard({ video }: VideoCardProps) {
         )}
         
         {/* Play overlay */}
-        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center group">
+        <button
+          onClick={onPlay}
+          className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center group cursor-pointer"
+          aria-label={`Play ${video.title}`}
+        >
           <div className="bg-red-600 rounded-full p-3 opacity-0 group-hover:opacity-100 transform scale-75 group-hover:scale-100 transition-all duration-300">
             <Play className="h-6 w-6 text-white fill-current" />
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Content */}
