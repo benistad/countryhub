@@ -125,13 +125,13 @@ export const GoogleNewsRSS: React.FC<GoogleNewsRSSProps> = ({
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('fr-FR', {
+      return date.toLocaleDateString('en-US', {
         day: 'numeric',
         month: 'short',
         year: 'numeric'
       });
     } catch {
-      return 'Date inconnue';
+      return 'Unknown date';
     }
   };
 
@@ -153,7 +153,7 @@ export const GoogleNewsRSS: React.FC<GoogleNewsRSSProps> = ({
       <div className={`max-w-6xl mx-auto p-6 ${className}`}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement des actualités...</p>
+          <p className="text-gray-600">Loading news...</p>
         </div>
       </div>
     );
@@ -164,7 +164,7 @@ export const GoogleNewsRSS: React.FC<GoogleNewsRSSProps> = ({
       <div className={`max-w-6xl mx-auto p-6 ${className}`}>
         <div className="text-center">
           <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-red-800 mb-2">Erreur de chargement</h3>
+            <h3 className="text-lg font-semibold text-red-800 mb-2">Loading error</h3>
             <p className="text-red-600 mb-4">❌ {supabaseError}</p>
             <button
               onClick={handleRefresh}
@@ -172,7 +172,7 @@ export const GoogleNewsRSS: React.FC<GoogleNewsRSSProps> = ({
               className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors flex items-center space-x-2 disabled:opacity-50 mx-auto"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span>{isRefreshing ? 'Synchronisation...' : 'Réessayer'}</span>
+              <span>{isRefreshing ? 'Syncing...' : 'Retry'}</span>
             </button>
           </div>
         </div>
@@ -196,7 +196,7 @@ export const GoogleNewsRSS: React.FC<GoogleNewsRSSProps> = ({
         
         {showLastUpdated && lastUpdate && (
           <p className="text-sm text-gray-500 mb-4">
-            Dernière mise à jour: {formatDate(lastUpdate)}
+            Last update: {formatDate(lastUpdate)}
           </p>
         )}
       </header>
@@ -272,7 +272,7 @@ export const GoogleNewsRSS: React.FC<GoogleNewsRSSProps> = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-2 text-gray-400 hover:text-orange-600 transition-colors rounded-full hover:bg-orange-50"
-                  aria-label="Lire l'article complet"
+                  aria-label="Read full article"
                 >
                   <ExternalLink className="w-4 h-4" />
                 </a>
@@ -285,7 +285,7 @@ export const GoogleNewsRSS: React.FC<GoogleNewsRSSProps> = ({
       {/* Footer */}
       <footer className="mt-8 text-center text-sm text-gray-500">
         <p>
-          Actualités fournies par{' '}
+          News provided by{' '}
           <a
             href="https://news.google.com"
             target="_blank"
@@ -296,7 +296,7 @@ export const GoogleNewsRSS: React.FC<GoogleNewsRSSProps> = ({
           </a>
         </p>
         <p className="mt-2">
-          Actualités mises à jour automatiquement toutes les 30 minutes
+          News automatically updated every 30 minutes
         </p>
       </footer>
     </div>

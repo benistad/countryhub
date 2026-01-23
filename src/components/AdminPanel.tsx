@@ -65,22 +65,22 @@ const AdminPanel: React.FC = () => {
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       
       if (diffHours < 1) {
-        return 'Il y a moins d\'1h';
+        return 'Less than 1h ago';
       } else if (diffHours < 24) {
-        return `Il y a ${diffHours}h`;
+        return `${diffHours}h ago`;
       } else if (diffDays === 1) {
-        return 'Hier';
+        return 'Yesterday';
       } else if (diffDays < 7) {
-        return `Il y a ${diffDays} jours`;
+        return `${diffDays} days ago`;
       } else {
-        return date.toLocaleDateString('fr-FR', { 
+        return date.toLocaleDateString('en-US', { 
           day: 'numeric',
           month: 'short',
           year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
         });
       }
     } catch {
-      return 'Date invalide';
+      return 'Invalid date';
     }
   };
 
@@ -106,7 +106,7 @@ const AdminPanel: React.FC = () => {
       if (syncId) {
         await updateSyncEntry(syncId, {
           status: 'error',
-          errorMessage: error.message || 'Erreur inconnue'
+          errorMessage: error.message || 'Unknown error'
         });
       }
     } finally {
@@ -138,7 +138,7 @@ const AdminPanel: React.FC = () => {
       if (syncId) {
         await updateSyncEntry(syncId, {
           status: 'error',
-          errorMessage: error.message || 'Erreur inconnue'
+          errorMessage: error.message || 'Unknown error'
         });
       }
     } finally {
@@ -160,7 +160,7 @@ const AdminPanel: React.FC = () => {
         await updateSyncEntry(syncId, {
           status: 'success',
           itemsProcessed: videos.length || 0,
-          successMessage: `${videos.length} vidéos synchronisées`
+          successMessage: `${videos.length} videos synced`
         });
       }
       await refreshStats();
@@ -168,7 +168,7 @@ const AdminPanel: React.FC = () => {
       if (syncId) {
         await updateSyncEntry(syncId, {
           status: 'error',
-          errorMessage: error.message || 'Erreur inconnue'
+          errorMessage: error.message || 'Unknown error'
         });
       }
     } finally {
@@ -203,9 +203,9 @@ const AdminPanel: React.FC = () => {
       case 'top30': return 'Top 30';
       case 'auto_top30': return 'Top 30 (Auto)';
       case 'news': return 'News';
-      case 'official-videos': return 'Vidéos Officielles';
-      case 'country_videos': return 'Vidéos Country';
-      case 'auto_country_videos': return 'Vidéos Country (Auto)';
+      case 'official-videos': return 'Official Videos';
+      case 'country_videos': return 'Country Videos';
+      case 'auto_country_videos': return 'Country Videos (Auto)';
       default: return type;
     }
   };
@@ -229,9 +229,9 @@ const AdminPanel: React.FC = () => {
       </div>
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
-          <span className="text-gray-500">Dernière sync:</span>
+          <span className="text-gray-500">Last sync:</span>
           <span className="text-gray-900">
-            {stats.lastSync ? formatLastUpdate(stats.lastSync) : 'Jamais'}
+            {stats.lastSync ? formatLastUpdate(stats.lastSync) : 'Never'}
           </span>
         </div>
         <div className="flex justify-between text-sm">
@@ -241,12 +241,12 @@ const AdminPanel: React.FC = () => {
               ? 'bg-blue-100 text-blue-800' 
               : 'bg-green-100 text-green-800'
           }`}>
-            {stats.lastType === 'manual' ? 'Manuel' : 'Auto'}
+            {stats.lastType === 'manual' ? 'Manual' : 'Auto'}
           </span>
         </div>
         {stats.lastStatus && (
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Statut:</span>
+            <span className="text-gray-500">Status:</span>
             <div className="flex items-center space-x-1">
               {getStatusIcon(stats.lastStatus)}
               <span className="text-gray-900 capitalize">{stats.lastStatus}</span>
@@ -283,7 +283,7 @@ const AdminPanel: React.FC = () => {
                   ? 'bg-blue-100 text-blue-800' 
                   : 'bg-green-100 text-green-800'
               }`}>
-                {item.sync_trigger === 'manual' ? 'Manuel' : 'Automatique'}
+                {item.sync_trigger === 'manual' ? 'Manual' : 'Automatic'}
               </span>
             </div>
             <p className="text-sm text-gray-500 mt-1">
@@ -301,25 +301,25 @@ const AdminPanel: React.FC = () => {
         {item.items_scanned > 0 && (
           <div className="text-center p-2 bg-gray-50 rounded">
             <div className="font-semibold text-gray-900">{item.items_scanned}</div>
-            <div className="text-gray-600">Scannés</div>
+            <div className="text-gray-600">Scanned</div>
           </div>
         )}
         {item.items_found > 0 && (
           <div className="text-center p-2 bg-blue-50 rounded">
             <div className="font-semibold text-blue-900">{item.items_found}</div>
-            <div className="text-blue-600">Trouvés</div>
+            <div className="text-blue-600">Found</div>
           </div>
         )}
         {item.items_processed > 0 && (
           <div className="text-center p-2 bg-green-50 rounded">
             <div className="font-semibold text-green-900">{item.items_processed}</div>
-            <div className="text-green-600">Traités</div>
+            <div className="text-green-600">Processed</div>
           </div>
         )}
         {item.items_inserted > 0 && (
           <div className="text-center p-2 bg-purple-50 rounded">
             <div className="font-semibold text-purple-900">{item.items_inserted}</div>
-            <div className="text-purple-600">Insérés</div>
+            <div className="text-purple-600">Inserted</div>
           </div>
         )}
       </div>
@@ -347,7 +347,7 @@ const AdminPanel: React.FC = () => {
         <div className="mt-2 text-sm text-yellow-700 bg-yellow-50 rounded p-2">
           <div className="flex items-center space-x-1 mb-1">
             <AlertCircle className="w-4 h-4" />
-            <span className="font-medium">Avertissements:</span>
+            <span className="font-medium">Warnings:</span>
           </div>
           <ul className="list-disc list-inside">
             {item.warnings.map((warning: string, index: number) => (
@@ -363,7 +363,7 @@ const AdminPanel: React.FC = () => {
           <details className="text-sm">
             <summary className="cursor-pointer text-gray-600 hover:text-gray-800">
               <Info className="w-4 h-4 inline mr-1" />
-              Logs détaillés
+              Detailed logs
             </summary>
             <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-x-auto">
               {JSON.stringify(item.detailed_logs, null, 2)}
@@ -379,8 +379,8 @@ const AdminPanel: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Administration</h1>
-          <p className="text-gray-600">Gestion et synchronisation des données Country Music Hub</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Panel</h1>
+          <p className="text-gray-600">Data management and synchronization for Country Music Hub</p>
         </div>
 
         {/* Navigation */}
@@ -388,8 +388,8 @@ const AdminPanel: React.FC = () => {
           <nav className="flex space-x-1 bg-white rounded-lg p-1 shadow-sm">
             {[
               { key: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-              { key: 'sync-history', label: 'Historique', icon: Clock },
-              { key: 'youtube-channels', label: 'Chaînes YouTube', icon: Youtube }
+              { key: 'sync-history', label: 'History', icon: Clock },
+              { key: 'youtube-channels', label: 'YouTube Channels', icon: Youtube }
             ].map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -451,8 +451,8 @@ const AdminPanel: React.FC = () => {
             <div className="px-6 py-4 border-b border-gray-200">
               <div className="flex justify-between items-center">
                 <div>
-                  <h2 className="text-xl font-semibold">Historique des Synchronisations</h2>
-                  <p className="text-gray-600 mt-1">Détails complets des synchronisations effectuées</p>
+                  <h2 className="text-xl font-semibold">Sync History</h2>
+                  <p className="text-gray-600 mt-1">Complete details of all synchronizations</p>
                 </div>
                 <button
                   onClick={() => loadHistory()}
@@ -460,7 +460,7 @@ const AdminPanel: React.FC = () => {
                   className="flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
                   <RefreshCw className={`w-4 h-4 mr-2 ${historyLoading ? 'animate-spin' : ''}`} />
-                  Actualiser
+                  Refresh
                 </button>
               </div>
             </div>
@@ -468,12 +468,12 @@ const AdminPanel: React.FC = () => {
               {historyLoading ? (
                 <div className="text-center py-8">
                   <RefreshCw className="w-8 h-8 mx-auto mb-4 text-blue-500 animate-spin" />
-                  <p className="text-gray-500">Chargement de l'historique...</p>
+                  <p className="text-gray-500">Loading history...</p>
                 </div>
               ) : history.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <Clock className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                  <p>Aucun historique de synchronisation disponible</p>
+                  <p>No sync history available</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -488,8 +488,8 @@ const AdminPanel: React.FC = () => {
         {activeSection === 'youtube-channels' && (
           <div className="bg-white rounded-lg shadow">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold">Gestion des Chaînes YouTube</h2>
-              <p className="text-gray-600 mt-1">Configuration des chaînes pour la synchronisation automatique</p>
+              <h2 className="text-xl font-semibold">YouTube Channels Management</h2>
+              <p className="text-gray-600 mt-1">Configure channels for automatic synchronization</p>
             </div>
             <div className="p-6">
               <YouTubeChannelsManager />

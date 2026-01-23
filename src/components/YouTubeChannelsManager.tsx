@@ -306,7 +306,7 @@ export function YouTubeChannelsManager() {
     return (
       <div className="max-w-6xl mx-auto p-6">
         <LoadingSpinner />
-        <p className="text-center text-gray-600 mt-4">Chargement des chaînes YouTube...</p>
+        <p className="text-center text-gray-600 mt-4">Loading YouTube channels...</p>
       </div>
     );
   }
@@ -315,7 +315,7 @@ export function YouTubeChannelsManager() {
     return (
       <div className="max-w-6xl mx-auto p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <h3 className="text-lg font-semibold text-red-800 mb-2">Erreur</h3>
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Error</h3>
           <p className="text-red-600">{error}</p>
         </div>
       </div>
@@ -337,14 +337,14 @@ export function YouTubeChannelsManager() {
               className="flex items-center bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Ajouter des chaînes
+              Add channels
             </button>
             <button
               onClick={() => setShowAddForm(true)}
               className="flex items-center bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Ajouter une chaîne
+              Add channel
             </button>
           </div>
         </div>
@@ -368,7 +368,7 @@ export function YouTubeChannelsManager() {
             <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Rechercher par artiste ou Channel ID..."
+              placeholder="Search by artist or Channel ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
@@ -381,21 +381,21 @@ export function YouTubeChannelsManager() {
       {showAddForm && (
         <div className="bg-white rounded-lg shadow-md p-6 mb-6 border border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
-            {editingChannel ? 'Modifier la chaîne' : 'Ajouter une nouvelle chaîne'}
+            {editingChannel ? 'Edit channel' : 'Add new channel'}
           </h2>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Artiste *
+                  Artist *
                 </label>
                 <input
                   type="text"
                   value={formData.artist}
                   onChange={(e) => setFormData({ ...formData, artist: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  placeholder="Nom de l'artiste"
+                  placeholder="Artist name"
                   required
                 />
               </div>
@@ -445,7 +445,7 @@ export function YouTubeChannelsManager() {
                 </button>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Cliquez sur "Auto" pour récupérer automatiquement le nom et l'ID de la chaîne
+                Click "Auto" to automatically fetch the channel name and ID
               </p>
             </div>
             
@@ -454,14 +454,14 @@ export function YouTubeChannelsManager() {
                 type="submit"
                 className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200"
               >
-                {editingChannel ? 'Mettre à jour' : 'Ajouter'}
+                {editingChannel ? 'Update' : 'Add'}
               </button>
               <button
                 type="button"
                 onClick={cancelForm}
                 className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200"
               >
-                Annuler
+                Cancel
               </button>
             </div>
           </form>
@@ -472,20 +472,20 @@ export function YouTubeChannelsManager() {
       {showBulkAddForm && (
         <div className="bg-white rounded-lg shadow-md p-6 mb-6 border border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
-            Ajouter plusieurs chaînes YouTube
+            Add multiple YouTube channels
           </h2>
           
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                URLs YouTube (une par ligne)
+                YouTube URLs (one per line)
               </label>
               <textarea
                 value={bulkUrls}
                 onChange={(e) => setBulkUrls(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 rows={8}
-                placeholder={`Collez vos URLs YouTube ici, une par ligne :
+                placeholder={`Paste your YouTube URLs here, one per line:
 
 https://www.youtube.com/@ArtistName1
 https://www.youtube.com/@ArtistName2
@@ -506,12 +506,12 @@ https://www.youtube.com/c/ArtistName3`}
                 {bulkProcessing ? (
                   <>
                     <Loader className="w-4 h-4 mr-2 animate-spin" />
-                    Traitement...
+                    Processing...
                   </>
                 ) : (
                   <>
                     <Search className="w-4 h-4 mr-2" />
-                    Analyser les URLs
+                    Analyze URLs
                   </>
                 )}
               </button>
@@ -522,7 +522,7 @@ https://www.youtube.com/c/ArtistName3`}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center"
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Ajouter toutes ({bulkResults.filter(r => r.success).length})
+                  Add all ({bulkResults.filter(r => r.success).length})
                 </button>
               )}
               
@@ -534,7 +534,7 @@ https://www.youtube.com/c/ArtistName3`}
                 }}
                 className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200"
               >
-                Annuler
+                Cancel
               </button>
             </div>
           </div>
@@ -543,7 +543,7 @@ https://www.youtube.com/c/ArtistName3`}
           {bulkResults.length > 0 && (
             <div className="mt-6 border-t pt-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                Résultats de l'analyse ({bulkResults.filter(r => r.success).length}/{bulkResults.length} trouvées)
+                Analysis results ({bulkResults.filter(r => r.success).length}/{bulkResults.length} found)
               </h3>
               
               <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -597,15 +597,15 @@ https://www.youtube.com/c/ArtistName3`}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-800">
-            Chaînes YouTube ({filteredChannels.length})
+            YouTube Channels ({filteredChannels.length})
           </h2>
         </div>
         
         {filteredChannels.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
             {searchTerm ? 
-              'Aucune chaîne ne correspond à la recherche' : 
-              'Aucune chaîne YouTube enregistrée'
+              'No channel matches the search' : 
+              'No YouTube channels registered'
             }
           </div>
         ) : (
@@ -614,7 +614,7 @@ https://www.youtube.com/c/ArtistName3`}
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Artiste
+                    Artist
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Channel ID
@@ -641,7 +641,7 @@ https://www.youtube.com/c/ArtistName3`}
                               rel="noopener noreferrer"
                               className="hover:text-red-600"
                             >
-                              Voir la chaîne
+                              View channel
                             </a>
                           </div>
                         </div>

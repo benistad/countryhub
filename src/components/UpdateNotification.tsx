@@ -71,7 +71,7 @@ export function UpdateNotification({
               className="inline-flex text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               onClick={onClose}
             >
-              <span className="sr-only">Fermer</span>
+              <span className="sr-only">Close</span>
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -89,7 +89,7 @@ interface RefreshButtonProps {
 
 export function RefreshButton({ onRefresh, isRefreshing, lastUpdate }: RefreshButtonProps) {
   const formatLastUpdate = (dateString: string | null) => {
-    if (!dateString) return 'Jamais';
+    if (!dateString) return 'Never';
     
     try {
       const date = new Date(dateString);
@@ -97,16 +97,16 @@ export function RefreshButton({ onRefresh, isRefreshing, lastUpdate }: RefreshBu
       const diffMs = now.getTime() - date.getTime();
       const diffMins = Math.floor(diffMs / 60000);
       
-      if (diffMins < 1) return 'À l\'instant';
-      if (diffMins < 60) return `Il y a ${diffMins} min`;
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins} min ago`;
       
       const diffHours = Math.floor(diffMins / 60);
-      if (diffHours < 24) return `Il y a ${diffHours}h`;
+      if (diffHours < 24) return `${diffHours}h ago`;
       
       const diffDays = Math.floor(diffHours / 24);
-      return `Il y a ${diffDays}j`;
+      return `${diffDays}d ago`;
     } catch {
-      return 'Inconnu';
+      return 'Unknown';
     }
   };
 
@@ -120,15 +120,15 @@ export function RefreshButton({ onRefresh, isRefreshing, lastUpdate }: RefreshBu
             ? 'bg-gray-400 cursor-not-allowed' 
             : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
         }`}
-        title="Actualiser toutes les données"
+        title="Refresh all data"
       >
         <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-        {isRefreshing ? 'Actualisation...' : 'Actualiser'}
+        {isRefreshing ? 'Refreshing...' : 'Refresh'}
       </button>
       
       {lastUpdate && (
         <span className="text-xs text-gray-500">
-          Dernière mise à jour: {formatLastUpdate(lastUpdate)}
+          Last update: {formatLastUpdate(lastUpdate)}
         </span>
       )}
     </div>
