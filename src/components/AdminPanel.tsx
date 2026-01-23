@@ -1,14 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Youtube, Trophy, RefreshCw, BarChart3, Music, Video, Clock, CheckCircle, XCircle, AlertCircle, Info } from 'lucide-react';
 import { YouTubeChannelsManager } from './YouTubeChannelsManager';
 import { useTop30 } from '../hooks/useTop30';
-import { useSyncHistory, SyncHistoryEntry } from '../hooks/useSyncHistory';
+import { useSyncHistory, SyncHistoryEntry, SyncStats } from '../hooks/useSyncHistory';
 import { useCountryNews } from '../hooks/useCountryNews';
 import { useCountryVideos } from '../hooks/useCountryVideos';
 
 const AdminPanel: React.FC = () => {
   const [activeSection, setActiveSection] = useState<'dashboard' | 'sync-history' | 'youtube-channels'>('dashboard');
   const [syncing, setSyncing] = useState({ top30: false, news: false, countryVideos: false });
+  const [realStats, setRealStats] = useState<{
+    top30: SyncStats;
+    news: SyncStats;
+    country_videos: SyncStats;
+  }>({
+    top30: { lastSync: null, lastType: null, itemCount: 0, lastStatus: null },
+    news: { lastSync: null, lastType: null, itemCount: 0, lastStatus: null },
+    country_videos: { lastSync: null, lastType: null, itemCount: 0, lastStatus: null }
+  });
   
   const { syncFromApify, getStats: getTop30Stats } = useTop30();
   const { syncNews } = useCountryNews();
@@ -16,7 +25,7 @@ const AdminPanel: React.FC = () => {
   const { 
     history, 
     loading: historyLoading, 
-    getSyncStats, 
+    getRealSyncStats,
     createSyncEntry, 
     updateSyncEntry,
     loadHistory 
@@ -24,10 +33,28 @@ const AdminPanel: React.FC = () => {
 
   const top30Stats = getTop30Stats();
 
-  // Obtenir les statistiques pour chaque type de sync
-  const top30SyncStats = getSyncStats('top30');
-  const newsSyncStats = getSyncStats('news');
-  const countryVideosSyncStats = getSyncStats('country_videos');
+  // Charger les vraies statistiques depuis les tables de données
+  const loadRealStats = async () => {
+    const [top30, news, countryVideos] = await Promise.all([
+      getRealSyncStats('top30'),
+      getRealSyncStats('news'),
+      getRealSyncStats('country_videos')
+    ]);
+    setRealStats({
+      top30,
+      news,
+      country_videos: countryVideos
+    });
+  };
+
+  useEffect(() => {
+    loadRealStats();
+  }, []);
+
+  // Recharger les stats après une sync
+  const refreshStats = async () => {
+    await loadRealStats();
+  };
 
   const formatLastUpdate = (dateString: string): string => {
     try {
@@ -74,6 +101,7 @@ const AdminPanel: React.FC = () => {
           errorMessage: !result.success ? result.message : undefined
         });
       }
+      await refreshStats();
     } catch (error: any) {
       if (syncId) {
         await updateSyncEntry(syncId, {
@@ -105,6 +133,7 @@ const AdminPanel: React.FC = () => {
           errorMessage: !result.success ? result.message : undefined
         });
       }
+      await refreshStats();
     } catch (error: any) {
       if (syncId) {
         await updateSyncEntry(syncId, {
@@ -134,6 +163,7 @@ const AdminPanel: React.FC = () => {
           successMessage: `${videos.length} vidéos synchronisées`
         });
       }
+      await refreshStats();
     } catch (error: any) {
       if (syncId) {
         await updateSyncEntry(syncId, {
@@ -385,7 +415,7 @@ const AdminPanel: React.FC = () => {
               {renderSyncCard(
                 'Top 30',
                 <Trophy className="w-5 h-5 text-yellow-500 mr-2" />,
-                top30SyncStats,
+                realStats.top30,
                 handleTop30Sync,
                 syncing.top30,
                 'Synchroniser',
@@ -395,7 +425,7 @@ const AdminPanel: React.FC = () => {
               {renderSyncCard(
                 'News',
                 <Music className="w-5 h-5 text-purple-500 mr-2" />,
-                newsSyncStats,
+                realStats.news,
                 handleNewsSync,
                 syncing.news,
                 'Synchroniser',
@@ -405,7 +435,7 @@ const AdminPanel: React.FC = () => {
               {renderSyncCard(
                 'Vidéos Country',
                 <Video className="w-5 h-5 text-red-500 mr-2" />,
-                countryVideosSyncStats,
+                realStats.country_videos,
                 handleCountryVideosSync,
                 syncing.countryVideos,
                 'Synchroniser',

@@ -71,6 +71,76 @@ export const useSyncHistory = () => {
     };
   };
 
+  // Obtenir les stats réelles depuis les tables de métadonnées
+  const getRealSyncStats = async (syncType: 'top30' | 'news' | 'country_videos'): Promise<SyncStats> => {
+    try {
+      if (syncType === 'country_videos') {
+        const { data, error } = await supabase
+          .from('country_videos_sync_metadata')
+          .select('*')
+          .order('last_sync_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (error || !data) {
+          return { lastSync: null, lastType: 'automatic', itemCount: 0, lastStatus: null };
+        }
+        
+        return {
+          lastSync: data.last_sync_at,
+          lastType: 'automatic',
+          itemCount: data.total_videos || 0,
+          lastStatus: 'success'
+        };
+      }
+      
+      if (syncType === 'top30') {
+        const { data, error } = await supabase
+          .from('top30_country')
+          .select('updated_at')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        const { count } = await supabase
+          .from('top30_country')
+          .select('*', { count: 'exact', head: true });
+        
+        return {
+          lastSync: data?.updated_at || null,
+          lastType: 'automatic',
+          itemCount: count || 0,
+          lastStatus: data ? 'success' : null
+        };
+      }
+      
+      if (syncType === 'news') {
+        const { data, error } = await supabase
+          .from('country_news')
+          .select('pub_date')
+          .order('pub_date', { ascending: false })
+          .limit(1)
+          .single();
+        
+        const { count } = await supabase
+          .from('country_news')
+          .select('*', { count: 'exact', head: true });
+        
+        return {
+          lastSync: data?.pub_date || null,
+          lastType: 'automatic',
+          itemCount: count || 0,
+          lastStatus: data ? 'success' : null
+        };
+      }
+      
+      return { lastSync: null, lastType: null, itemCount: 0, lastStatus: null };
+    } catch (err) {
+      console.error(`Erreur lors de la récupération des stats pour ${syncType}:`, err);
+      return { lastSync: null, lastType: null, itemCount: 0, lastStatus: null };
+    }
+  };
+
   // Créer une nouvelle entrée d'historique
   const createSyncEntry = async (
     syncType: 'top30' | 'news' | 'official-videos' | 'country_videos',
@@ -183,6 +253,7 @@ export const useSyncHistory = () => {
     error,
     loadHistory,
     getSyncStats,
+    getRealSyncStats,
     createSyncEntry,
     updateSyncEntry,
     getHistoryByType,
