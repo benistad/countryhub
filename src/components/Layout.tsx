@@ -161,9 +161,9 @@ export default function Layout() {
               <p className="text-gray-300 text-sm mb-4">
                 Content updated automatically 24/7. Data from official sources and analyzed by AI.
               </p>
-              <p className="text-gray-400 text-xs">
-                Videos sourced from official YouTube channels. Chart data from Billboard.
-              </p>
+              <ul className="space-y-2 text-gray-300 text-sm">
+                <li><Link to="/faq" className="hover:text-white transition-colors">FAQ</Link></li>
+              </ul>
             </div>
           </div>
           
