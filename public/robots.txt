@@ -8,9 +8,10 @@ Sitemap: https://countrymusic-hub.com/sitemap.xml
 Crawl-delay: 1
 
 # Important pages to index with priority
-Allow: /videos
-Allow: /chart
-Allow: /news
+Allow: /country-music-videos
+Allow: /top-30-country-songs
+Allow: /country-music-news
+Allow: /artist/
 
 # Block admin pages
 Disallow: /admin
@@ -18,8 +19,6 @@ Disallow: /*admin*
 
 # Block technical files
 Disallow: /*.json$
-Disallow: /*.js$
-Disallow: /*.css$
 Disallow: /src/
 Disallow: /node_modules/
 
