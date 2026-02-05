@@ -12,6 +12,10 @@ const ArtistPage = lazy(() => import('./pages/ArtistPage'));
 const VideoPage = lazy(() => import('./pages/VideoPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+// Long-tail SEO pages
+const NewReleasesPage = lazy(() => import('./pages/NewReleasesPage'));
+const BestOf2025Page = lazy(() => import('./pages/BestOf2025Page'));
+const CountryLyricsPage = lazy(() => import('./pages/CountryLyricsPage'));
 
 // Loading fallback component
 function PageLoader() {
@@ -79,6 +83,31 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <VideoPage />
+          </Suspense>
+        ),
+      },
+      // Long-tail SEO pages
+      {
+        path: 'new-country-music-releases',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <NewReleasesPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'best-country-songs-2025',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <BestOf2025Page />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'country-lyrics-videos',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <CountryLyricsPage />
           </Suspense>
         ),
       },
