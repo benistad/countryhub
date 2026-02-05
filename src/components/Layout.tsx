@@ -117,7 +117,7 @@ export default function Layout() {
       
       <footer className="bg-gray-800 text-white py-12 mt-16" role="contentinfo">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
             <div>
               <h3 className="text-lg font-semibold mb-4">CountryMusic-Hub.com</h3>
               <p className="text-gray-300 text-sm">
@@ -131,6 +131,16 @@ export default function Layout() {
                 <li><Link to="/country-music-videos" className="hover:text-white transition-colors">Country Videos</Link></li>
                 <li><Link to="/top-30-country-songs" className="hover:text-white transition-colors">Top 30 Chart</Link></li>
                 <li><Link to="/country-music-news" className="hover:text-white transition-colors">Country News</Link></li>
+                <li><Link to="/artists" className="hover:text-white transition-colors">All Artists</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-lg font-semibold mb-4">Discover</h4>
+              <ul className="space-y-2 text-gray-300 text-sm">
+                <li><Link to="/new-country-music-releases" className="hover:text-white transition-colors">New Releases</Link></li>
+                <li><Link to="/best-country-songs-2025" className="hover:text-white transition-colors">Best of 2025</Link></li>
+                <li><Link to="/country-lyrics-videos" className="hover:text-white transition-colors">Lyrics Videos</Link></li>
               </ul>
             </div>
             
@@ -141,13 +151,18 @@ export default function Layout() {
                 <li><Link to="/artist/luke-combs" className="hover:text-white transition-colors">Luke Combs</Link></li>
                 <li><Link to="/artist/chris-stapleton" className="hover:text-white transition-colors">Chris Stapleton</Link></li>
                 <li><Link to="/artist/zach-bryan" className="hover:text-white transition-colors">Zach Bryan</Link></li>
+                <li><Link to="/artist/lainey-wilson" className="hover:text-white transition-colors">Lainey Wilson</Link></li>
+                <li><Link to="/artist/jelly-roll" className="hover:text-white transition-colors">Jelly Roll</Link></li>
               </ul>
             </div>
             
             <div>
               <h4 className="text-lg font-semibold mb-4">About</h4>
-              <p className="text-gray-300 text-sm">
+              <p className="text-gray-300 text-sm mb-4">
                 Content updated automatically 24/7. Data from official sources and analyzed by AI.
+              </p>
+              <p className="text-gray-400 text-xs">
+                Videos sourced from official YouTube channels. Chart data from Billboard.
               </p>
             </div>
           </div>

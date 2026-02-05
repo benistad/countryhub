@@ -16,6 +16,7 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const NewReleasesPage = lazy(() => import('./pages/NewReleasesPage'));
 const BestOf2025Page = lazy(() => import('./pages/BestOf2025Page'));
 const CountryLyricsPage = lazy(() => import('./pages/CountryLyricsPage'));
+const AllArtistsPage = lazy(() => import('./pages/AllArtistsPage'));
 
 // Loading fallback component
 function PageLoader() {
@@ -108,6 +109,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <CountryLyricsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'artists',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <AllArtistsPage />
           </Suspense>
         ),
       },

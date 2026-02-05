@@ -85,6 +85,14 @@
     <priority>0.8</priority>
   </url>
 
+  <!-- Artists Directory -->
+  <url>
+    <loc>https://countrymusic-hub.com/artists</loc>
+    <lastmod>2026-02-05</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
   <!-- Long-tail SEO Pages -->
   <url>
     <loc>https://countrymusic-hub.com/new-country-music-releases</loc>
