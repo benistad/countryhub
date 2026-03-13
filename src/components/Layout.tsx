@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Settings, Trophy, Rss, Video, Home } from 'lucide-react';
+import { Settings, Trophy, Rss, Video, Home, Star } from 'lucide-react';
 import { UpdateNotification } from './UpdateNotification';
 
 export default function Layout() {
@@ -93,6 +93,11 @@ export default function Layout() {
               <Link to="/country-music-news" className={navLinkClass('/country-music-news')} aria-label="Country News">
                 <Rss className="w-4 h-4 inline mr-1" />
                 <span className="hidden sm:inline">News</span>
+              </Link>
+
+              <Link to="/news-plus" className={navLinkClass('/news-plus')} aria-label="News+ Archive">
+                <Star className="w-4 h-4 inline mr-1" />
+                <span className="hidden sm:inline">News+</span>
               </Link>
 
               <Link to="/top-30-country-songs" className={navLinkClass('/top-30-country-songs')} aria-label="Top 30 Chart">
