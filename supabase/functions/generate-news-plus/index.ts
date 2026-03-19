@@ -110,15 +110,15 @@ Deno.serve(async (req: Request) => {
     console.log("✍️ Génération des articles News+...");
     for (const cluster of clusters) {
       try {
-        // Vérifier si un article similaire n'existe pas déjà
-        const isDuplicate = await checkDuplicateArticle(supabase, cluster.topic);
-        if (isDuplicate) {
-          console.log(`⏭️ Article similaire déjà existant pour: ${cluster.topic}`);
-          continue;
-        }
-
         // Générer l'article avec l'IA
         const generatedArticle = await generateArticleFromCluster(cluster, OPENAI_API_KEY);
+        
+        // Vérifier si un article similaire n'existe pas déjà (après génération pour avoir le slug)
+        const isDuplicate = await checkDuplicateArticle(supabase, generatedArticle.title, generatedArticle.slug);
+        if (isDuplicate) {
+          console.log(`⏭️ Article similaire déjà existant pour: ${generatedArticle.title}`);
+          continue;
+        }
         
         // Sauvegarder l'article
         const { error: insertError } = await supabase
@@ -370,15 +370,39 @@ Return JSON format:
 /**
  * Vérifie si un article similaire existe déjà
  */
-async function checkDuplicateArticle(supabase: any, topic: string): Promise<boolean> {
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+async function checkDuplicateArticle(supabase: any, title: string, slug: string): Promise<boolean> {
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
   
-  const { data } = await supabase
+  // Vérifier par slug (plus fiable)
+  const { data: slugData } = await supabase
     .from('news_plus_articles')
-    .select('title')
-    .gte('published_at', oneDayAgo)
-    .ilike('title', `%${topic.substring(0, 30)}%`)
+    .select('id')
+    .eq('slug', slug)
     .limit(1);
 
-  return data && data.length > 0;
+  if (slugData && slugData.length > 0) {
+    return true;
+  }
+
+  // Vérifier par titre similaire (sans le timestamp)
+  const baseSlug = slug.split('-').slice(0, -1).join('-'); // Enlever le timestamp
+  const { data: titleData } = await supabase
+    .from('news_plus_articles')
+    .select('slug')
+    .gte('published_at', threeDaysAgo)
+    .limit(100);
+
+  if (titleData && titleData.length > 0) {
+    // Vérifier si un slug similaire existe (sans timestamp)
+    const similarExists = titleData.some((article: any) => {
+      const existingBaseSlug = article.slug.split('-').slice(0, -1).join('-');
+      return existingBaseSlug === baseSlug;
+    });
+    
+    if (similarExists) {
+      return true;
+    }
+  }
+
+  return false;
 }
