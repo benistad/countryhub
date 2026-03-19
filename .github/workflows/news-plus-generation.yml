@@ -17,6 +17,7 @@ jobs:
       - name: Generate News+ Articles
         run: |
           echo "🚀 Déclenchement de la génération News+..."
+          echo "🔗 URL: ${{ secrets.SUPABASE_URL }}/functions/v1/generate-news-plus"
           
           response=$(curl -s -w "\n%{http_code}" -X POST \
             "${{ secrets.SUPABASE_URL }}/functions/v1/generate-news-plus" \
@@ -27,12 +28,17 @@ jobs:
           body=$(echo "$response" | sed '$d')
           
           echo "📊 HTTP Status: $http_code"
-          echo "📄 Response: $body"
+          echo "📄 Response Body:"
+          echo "$body" | jq '.' 2>/dev/null || echo "$body"
           
           if [ "$http_code" -eq 200 ]; then
             echo "✅ Génération réussie!"
           else
-            echo "❌ Erreur lors de la génération"
+            echo "❌ Erreur HTTP $http_code"
+            echo "💡 Vérifiez:"
+            echo "  - Les secrets GitHub sont configurés"
+            echo "  - L'Edge Function est déployée"
+            echo "  - L'API Key OpenAI est configurée dans Supabase"
             exit 1
           fi
 
