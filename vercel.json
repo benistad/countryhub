@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/news-sitemap.xml",
-      "destination": "https://lkrintwlenbmtohilmrs.supabase.co/functions/v1/news-plus-sitemap"
+      "destination": "/api/news-sitemap"
     },
     {
       "source": "/(.*)",
