@@ -180,6 +180,19 @@ Deno.serve(async (req: Request) => {
     console.log("🧹 Nettoyage des anciens articles...");
     await supabase.rpc('delete_old_news_plus_articles', { keep_count: 100 });
 
+    // ÉTAPE 5: Notifier Google du nouveau contenu (si articles générés)
+    if (generationLog.articlesGenerated > 0) {
+      console.log("🔔 Notification Google Search Console...");
+      try {
+        // Ping Google pour indexation rapide
+        const sitemapUrl = 'https://www.countrymusic-hub.com/news-sitemap.xml';
+        await fetch(`https://www.google.com/ping?sitemap=${encodeURIComponent(sitemapUrl)}`);
+        console.log("✅ Google notifié du nouveau sitemap");
+      } catch (pingError) {
+        console.warn("⚠️ Échec notification Google (non bloquant)");
+      }
+    }
+
     // ÉTAPE 5: Enregistrer l'historique
     const executionTime = Date.now() - startTime;
     await supabase.from('news_plus_generation_history').insert([{

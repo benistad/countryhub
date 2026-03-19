@@ -2,7 +2,12 @@ User-agent: *
 Allow: /
 
 # Sitemaps
-Sitemap: https://countrymusic-hub.com/sitemap.xml
+Sitemap: https://www.countrymusic-hub.com/sitemap.xml
+Sitemap: https://www.countrymusic-hub.com/news-sitemap.xml
+
+# Google News Bot
+User-agent: Googlebot-News
+Allow: /news-plus/
 
 # Crawl optimization for bots
 Crawl-delay: 1
