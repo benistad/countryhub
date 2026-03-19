@@ -1,10 +1,10 @@
 name: News+ Auto Generation
 
-# Exécution automatique toutes les heures
+# Exécution automatique toutes les 2 heures
 on:
   schedule:
-    # Toutes les heures à minute 0 (format cron: minute hour day month weekday)
-    - cron: '0 * * * *'
+    # Toutes les 2 heures à minute 0 (format cron: minute hour day month weekday)
+    - cron: '0 */2 * * *'
   
   # Permet aussi un déclenchement manuel depuis GitHub
   workflow_dispatch:
