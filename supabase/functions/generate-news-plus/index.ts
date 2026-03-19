@@ -97,12 +97,44 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    generationLog.articlesAnalyzed = sourceArticles.length;
-    console.log(`✅ ${sourceArticles.length} articles récupérés`);
+    // ÉTAPE 1.5: Filtrer les articles sources déjà utilisés
+    console.log("🔍 Filtrage des articles déjà traités...");
+    const { data: usedArticles } = await supabase
+      .from('news_plus_articles')
+      .select('source_articles_urls')
+      .gte('published_at', twentyFourHoursAgo);
+
+    // Créer un Set des URLs déjà utilisées
+    const usedUrls = new Set<string>();
+    if (usedArticles) {
+      usedArticles.forEach(article => {
+        if (article.source_articles_urls) {
+          article.source_articles_urls.forEach((url: string) => usedUrls.add(url));
+        }
+      });
+    }
+
+    // Filtrer les articles non encore traités
+    const newArticles = sourceArticles.filter(article => !usedUrls.has(article.link));
+    
+    if (newArticles.length === 0) {
+      console.log("ℹ️ Tous les articles ont déjà été traités");
+      return new Response(JSON.stringify({
+        success: true,
+        message: "Tous les articles ont déjà été traités",
+        stats: { ...generationLog, articlesAnalyzed: sourceArticles.length, articlesFiltered: sourceArticles.length - newArticles.length }
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    generationLog.articlesAnalyzed = newArticles.length;
+    console.log(`✅ ${newArticles.length} nouveaux articles (${sourceArticles.length - newArticles.length} déjà traités)`);
 
     // ÉTAPE 2: Clustering des articles par sujet similaire avec IA
     console.log("🔍 Clustering des articles par sujet...");
-    const clusters = await clusterArticlesByTopic(sourceArticles, OPENAI_API_KEY);
+    const clusters = await clusterArticlesByTopic(newArticles, OPENAI_API_KEY);
     generationLog.clustersCreated = clusters.length;
     console.log(`✅ ${clusters.length} clusters créés`);
 
