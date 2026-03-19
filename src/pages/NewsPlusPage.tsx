@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Calendar, Tag, X, Star, Music, Trophy, Mic2, Newspaper, Filter } from 'lucide-react';
+import { Search, Calendar, Tag, X, Star, Music, Trophy, Mic2, Newspaper, Filter, RefreshCw } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
 import { generateArtistSlug } from '../utils/seo';
+import { useNewsPlusArticles, NewsPlusArticle } from '../hooks/useNewsPlusArticles';
 
 interface NewsArticle {
   id: number;

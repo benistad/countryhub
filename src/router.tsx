@@ -18,7 +18,7 @@ const BestOf2025Page = lazy(() => import('./pages/BestOf2025Page'));
 const CountryLyricsPage = lazy(() => import('./pages/CountryLyricsPage'));
 const AllArtistsPage = lazy(() => import('./pages/AllArtistsPage'));
 const FAQPage = lazy(() => import('./pages/FAQPage'));
-const NewsPlusPage = lazy(() => import('./pages/NewsPlusPage'));
+const NewsPlusPage = lazy(() => import('./pages/NewsPlusPageDynamic'));
 
 // Loading fallback component
 function PageLoader() {

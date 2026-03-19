@@ -1,0 +1,43 @@
+name: News+ Auto Generation
+
+# Exécution automatique toutes les heures
+on:
+  schedule:
+    # Toutes les heures à minute 0 (format cron: minute hour day month weekday)
+    - cron: '0 * * * *'
+  
+  # Permet aussi un déclenchement manuel depuis GitHub
+  workflow_dispatch:
+
+jobs:
+  generate-news-plus:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Generate News+ Articles
+        run: |
+          echo "🚀 Déclenchement de la génération News+..."
+          
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/generate-news-plus" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "📊 HTTP Status: $http_code"
+          echo "📄 Response: $body"
+          
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ Génération réussie!"
+          else
+            echo "❌ Erreur lors de la génération"
+            exit 1
+          fi
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "⚠️ La génération News+ a échoué"
+          echo "Vérifiez les logs Supabase pour plus de détails"
