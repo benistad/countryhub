@@ -12,6 +12,7 @@ export interface NewsPlusArticle {
   tags: string[];
   featured_image_url?: string;
   meta_description: string;
+  meta_keywords?: string[];
   published_at: string;
   is_published: boolean;
   featured: boolean;

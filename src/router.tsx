@@ -19,6 +19,7 @@ const CountryLyricsPage = lazy(() => import('./pages/CountryLyricsPage'));
 const AllArtistsPage = lazy(() => import('./pages/AllArtistsPage'));
 const FAQPage = lazy(() => import('./pages/FAQPage'));
 const NewsPlusPage = lazy(() => import('./pages/NewsPlusPageDynamic'));
+const NewsArticlePage = lazy(() => import('./pages/NewsArticlePage'));
 
 // Loading fallback component
 function PageLoader() {
@@ -135,6 +136,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <NewsPlusPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'news-plus/:slug',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <NewsArticlePage />
           </Suspense>
         ),
       },

@@ -32,13 +32,13 @@ function CategoryBadge({ category }: { category: string }) {
   );
 }
 
-function FeaturedCard({ article, onClick }: { article: NewsPlusArticle; onClick: () => void }) {
+function FeaturedCard({ article }: { article: NewsPlusArticle }) {
   const publishDate = new Date(article.published_at);
   
   return (
-    <article 
-      onClick={onClick}
-      className="bg-gradient-to-br from-red-50 to-orange-50 border border-red-200 rounded-2xl p-8 cursor-pointer mb-8 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+    <Link 
+      to={`/news-plus/${article.slug}`}
+      className="block bg-gradient-to-br from-red-50 to-orange-50 border border-red-200 rounded-2xl p-8 mb-8 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
     >
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <span className="bg-red-600 text-white text-xs font-bold uppercase tracking-wider px-3 py-1 rounded">
@@ -81,17 +81,17 @@ function FeaturedCard({ article, onClick }: { article: NewsPlusArticle; onClick:
           </span>
         ))}
       </div>
-    </article>
+    </Link>
   );
 }
 
-function NewsCard({ article, onClick }: { article: NewsPlusArticle; onClick: () => void }) {
+function NewsCard({ article }: { article: NewsPlusArticle }) {
   const publishDate = new Date(article.published_at);
   
   return (
-    <article 
-      onClick={onClick}
-      className="bg-white border border-gray-200 rounded-xl p-5 cursor-pointer hover:border-red-300 hover:shadow-lg transition-all duration-200 hover:-translate-y-1"
+    <Link 
+      to={`/news-plus/${article.slug}`}
+      className="block bg-white border border-gray-200 rounded-xl p-5 hover:border-red-300 hover:shadow-lg transition-all duration-200 hover:-translate-y-1"
     >
       <div className="flex justify-between items-start gap-3 mb-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -125,101 +125,13 @@ function NewsCard({ article, onClick }: { article: NewsPlusArticle; onClick: () 
           <span key={tag} className="text-xs text-gray-400">#{tag}</span>
         ))}
       </div>
-    </article>
-  );
-}
-
-function ArticleModal({ article, onClose }: { article: NewsPlusArticle | null; onClose: () => void }) {
-  if (!article) return null;
-  
-  const publishDate = new Date(article.published_at);
-  
-  return (
-    <div 
-      onClick={onClose}
-      className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 overflow-y-auto"
-    >
-      <div 
-        onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-2xl p-8 max-w-3xl w-full my-8 relative"
-      >
-        <button 
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <X className="w-6 h-6" />
-        </button>
-        
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          <CategoryBadge category={article.category} />
-          <span className="text-sm text-gray-500 flex items-center">
-            <Calendar className="w-4 h-4 mr-1" />
-            {MONTHS_EN[publishDate.getMonth()]} {publishDate.getDate()}, {publishDate.getFullYear()}
-          </span>
-          {article.source_articles_count > 1 && (
-            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
-              Based on {article.source_articles_count} sources
-            </span>
-          )}
-        </div>
-        
-        {article.artist && (
-          <Link 
-            to={`/artist/${generateArtistSlug(article.artist)}`}
-            className="text-sm font-bold text-red-600 uppercase tracking-wider hover:text-red-700 transition-colors"
-          >
-            {article.artist}
-          </Link>
-        )}
-        
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mt-3 mb-6 leading-tight">
-          {article.title}
-        </h2>
-        
-        {article.featured_image_url && (
-          <img 
-            src={article.featured_image_url} 
-            alt={article.title}
-            className="w-full h-64 object-cover rounded-xl mb-6"
-          />
-        )}
-        
-        <div className="prose prose-gray max-w-none mb-8">
-          {article.content.split('\n\n').map((paragraph, index) => (
-            <p key={index} className="text-gray-600 leading-relaxed mb-4">
-              {paragraph}
-            </p>
-          ))}
-        </div>
-        
-        <div className="flex flex-wrap gap-2 pt-6 border-t border-gray-200 mb-8">
-          {article.tags.map(tag => (
-            <span key={tag} className="text-sm text-gray-500 border border-gray-300 rounded px-3 py-1">
-              #{tag}
-            </span>
-          ))}
-        </div>
-        
-        {article.artist && (
-          <div className="mt-8">
-            <Link 
-              to={`/artist/${generateArtistSlug(article.artist)}`}
-              className="inline-flex items-center bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-            >
-              <Music className="w-5 h-5 mr-2" />
-              View {article.artist}'s Videos
-            </Link>
-          </div>
-        )}
-      </div>
-    </div>
+    </Link>
   );
 }
 
 export default function NewsPlusPageDynamic() {
   const [selectedCat, setSelectedCat] = useState("all");
   const [search, setSearch] = useState("");
-  const [selectedArticle, setSelectedArticle] = useState<NewsPlusArticle | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Récupérer les articles depuis Supabase
@@ -395,14 +307,14 @@ export default function NewsPlusPageDynamic() {
 
       {/* Featured */}
       {featured.length > 0 && (
-        <FeaturedCard article={featured[0]} onClick={() => setSelectedArticle(featured[0])} />
+        <FeaturedCard article={featured[0]} />
       )}
 
       {/* Grid */}
       {regular.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {regular.map(article => (
-            <NewsCard key={article.id} article={article} onClick={() => setSelectedArticle(article)} />
+            <NewsCard key={article.id} article={article} />
           ))}
         </div>
       ) : filtered.length === 0 && (
@@ -448,8 +360,6 @@ export default function NewsPlusPageDynamic() {
         </div>
       </section>
 
-      {/* Modal */}
-      <ArticleModal article={selectedArticle} onClose={() => setSelectedArticle(null)} />
     </div>
   );
 }
