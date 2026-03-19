@@ -121,11 +121,11 @@ export default function NewsArticlePage() {
       <article className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Featured Image */}
         {article.featured_image_url && (
-          <div className="w-full h-96 overflow-hidden">
+          <div className="w-full overflow-hidden">
             <img 
               src={article.featured_image_url} 
               alt={article.title}
-              className="w-full h-full object-cover"
+              className="w-full h-auto object-contain"
             />
           </div>
         )}
