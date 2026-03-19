@@ -38,48 +38,68 @@ function FeaturedCard({ article }: { article: NewsPlusArticle }) {
   return (
     <Link 
       to={`/news-plus/${article.slug}`}
-      className="block bg-gradient-to-br from-red-50 to-orange-50 border border-red-200 rounded-2xl p-8 mb-8 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+      className="block bg-white border border-red-200 rounded-2xl overflow-hidden mb-8 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
     >
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <span className="bg-red-600 text-white text-xs font-bold uppercase tracking-wider px-3 py-1 rounded">
-          Featured
-        </span>
-        <CategoryBadge category={article.category} />
-        <span className="text-sm text-gray-500 flex items-center">
-          <Calendar className="w-4 h-4 mr-1" />
-          {MONTHS_EN[publishDate.getMonth()]} {publishDate.getDate()}, {publishDate.getFullYear()}
-        </span>
-        {article.source_articles_count > 1 && (
-          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
-            {article.source_articles_count} sources
-          </span>
-        )}
-      </div>
-      
-      {article.artist && (
-        <Link 
-          to={`/artist/${generateArtistSlug(article.artist)}`}
-          onClick={(e) => e.stopPropagation()}
-          className="text-sm font-bold text-red-600 uppercase tracking-wider hover:text-red-700 transition-colors"
-        >
-          {article.artist}
-        </Link>
+      {/* Featured Image */}
+      {article.featured_image_url && (
+        <div className="relative w-full h-80 overflow-hidden">
+          <img 
+            src={article.featured_image_url} 
+            alt={article.title}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute top-4 left-4">
+            <span className="bg-red-600 text-white text-xs font-bold uppercase tracking-wider px-3 py-2 rounded shadow-lg">
+              Featured
+            </span>
+          </div>
+        </div>
       )}
       
-      <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mt-2 mb-4 leading-tight">
-        {article.title}
-      </h2>
-      
-      <p className="text-gray-600 leading-relaxed mb-6 max-w-2xl">
-        {article.excerpt}
-      </p>
-      
-      <div className="flex flex-wrap gap-2">
-        {article.tags.slice(0, 5).map(tag => (
-          <span key={tag} className="text-sm text-gray-500 border border-gray-300 rounded px-2 py-1">
-            #{tag}
+      <div className="p-8">
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          {!article.featured_image_url && (
+            <span className="bg-red-600 text-white text-xs font-bold uppercase tracking-wider px-3 py-1 rounded">
+              Featured
+            </span>
+          )}
+          <CategoryBadge category={article.category} />
+          <span className="text-sm text-gray-500 flex items-center">
+            <Calendar className="w-4 h-4 mr-1" />
+            {MONTHS_EN[publishDate.getMonth()]} {publishDate.getDate()}, {publishDate.getFullYear()}
           </span>
-        ))}
+          {article.source_articles_count > 1 && (
+            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+              {article.source_articles_count} sources
+            </span>
+          )}
+        </div>
+        
+        {article.artist && (
+          <Link 
+            to={`/artist/${generateArtistSlug(article.artist)}`}
+            onClick={(e) => e.stopPropagation()}
+            className="text-sm font-bold text-red-600 uppercase tracking-wider hover:text-red-700 transition-colors"
+          >
+            {article.artist}
+          </Link>
+        )}
+        
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mt-2 mb-4 leading-tight">
+          {article.title}
+        </h2>
+        
+        <p className="text-gray-600 leading-relaxed mb-6">
+          {article.excerpt}
+        </p>
+        
+        <div className="flex flex-wrap gap-2">
+          {article.tags.slice(0, 5).map(tag => (
+            <span key={tag} className="text-sm text-gray-500 border border-gray-300 rounded px-2 py-1">
+              #{tag}
+            </span>
+          ))}
+        </div>
       </div>
     </Link>
   );
@@ -91,39 +111,52 @@ function NewsCard({ article }: { article: NewsPlusArticle }) {
   return (
     <Link 
       to={`/news-plus/${article.slug}`}
-      className="block bg-white border border-gray-200 rounded-xl p-5 hover:border-red-300 hover:shadow-lg transition-all duration-200 hover:-translate-y-1"
+      className="block bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-red-300 hover:shadow-lg transition-all duration-200 hover:-translate-y-1"
     >
-      <div className="flex justify-between items-start gap-3 mb-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <CategoryBadge category={article.category} />
-          <span className="text-xs text-gray-400">
-            {MONTHS_EN[publishDate.getMonth()]} {publishDate.getDate()}
-          </span>
+      {/* Article Image */}
+      {article.featured_image_url && (
+        <div className="w-full h-48 overflow-hidden">
+          <img 
+            src={article.featured_image_url} 
+            alt={article.title}
+            className="w-full h-full object-cover"
+          />
         </div>
-      </div>
-      
-      {article.artist && (
-        <Link 
-          to={`/artist/${generateArtistSlug(article.artist)}`}
-          onClick={(e) => e.stopPropagation()}
-          className="text-xs font-bold text-red-600 uppercase tracking-wider hover:text-red-700 transition-colors"
-        >
-          {article.artist}
-        </Link>
       )}
       
-      <h3 className="text-lg font-semibold text-gray-800 mt-1 mb-2 leading-snug line-clamp-2">
-        {article.title}
-      </h3>
-      
-      <p className="text-sm text-gray-500 line-clamp-3 mb-3">
-        {article.excerpt}
-      </p>
-      
-      <div className="flex flex-wrap gap-1">
-        {article.tags.slice(0, 2).map(tag => (
-          <span key={tag} className="text-xs text-gray-400">#{tag}</span>
-        ))}
+      <div className="p-5">
+        <div className="flex justify-between items-start gap-3 mb-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <CategoryBadge category={article.category} />
+            <span className="text-xs text-gray-400">
+              {MONTHS_EN[publishDate.getMonth()]} {publishDate.getDate()}
+            </span>
+          </div>
+        </div>
+        
+        {article.artist && (
+          <Link 
+            to={`/artist/${generateArtistSlug(article.artist)}`}
+            onClick={(e) => e.stopPropagation()}
+            className="text-xs font-bold text-red-600 uppercase tracking-wider hover:text-red-700 transition-colors"
+          >
+            {article.artist}
+          </Link>
+        )}
+        
+        <h3 className="text-lg font-semibold text-gray-800 mt-1 mb-2 leading-snug line-clamp-2">
+          {article.title}
+        </h3>
+        
+        <p className="text-sm text-gray-500 line-clamp-3 mb-3">
+          {article.excerpt}
+        </p>
+        
+        <div className="flex flex-wrap gap-1">
+          {article.tags.slice(0, 2).map(tag => (
+            <span key={tag} className="text-xs text-gray-400">#{tag}</span>
+          ))}
+        </div>
       </div>
     </Link>
   );
